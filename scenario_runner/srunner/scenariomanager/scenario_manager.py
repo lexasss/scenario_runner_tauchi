@@ -185,6 +185,10 @@ class ScenarioManager(object):
             # Tick scenario
             self.scenario_tree.tick_once()
 
+            """ TAUCHI - uncomment the next 2 lines if ou need to check 
+            what are the locations the ego car is passing via """
+            # ego_location = CarlaDataProvider.get_location(self.ego_vehicles[0])
+            # print(ego_location)
             if self._debug_mode:
                 print("\n")
                 py_trees.display.print_ascii_tree(self.scenario_tree, show_status=True)

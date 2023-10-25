@@ -6,31 +6,31 @@
 #    srunner/scenarios/route_scenario.py
 # were modified accordingly
 
-function Get-Task
+function Get-Order
 {
-    [string[]]$tasks = 'Just drive', 'Safe lane change', 'Unsafe lane change'
+    [string[]]$order = 'Safe, then Unsafe', 'Unsafe, then Safe'
 
-    Write-Host "Available tasks:"
+    Write-Host "Available lane change order:"
     Write-Host ""
 
-    For ($i=0; $i -lt $tasks.Count; $i++)
+    For ($i=0; $i -lt $order.Count; $i++)
     {
-        Write-Host "$($i+1): $($tasks[$i])"
+        Write-Host "$($i+1): $($order[$i])"
     }
     
     Write-Host ""
 
-    [ValidateScript({$_ -ge 0 -and $_ -le $tasks.Length})]
-    [int]$number = Read-Host "Press the number to select a task"
+    [ValidateScript({$_ -ge 0 -and $_ -le $order.Length})]
+    [int]$number = Read-Host "Select the order"
     
     Write-Host ""
 
     if($? -and $number -gt 0) {
-        Write-Host "Starting the task '$($tasks[$number - 1])'"
+        Write-Host "Starting scenario with order '$($order[$number - 1])'"
         return $number
     }
     else {
-        Write-Host "No task selected. Bye!"
+        Write-Host "No order selected. Bye!"
     }
 
     return 0
@@ -44,11 +44,10 @@ Set-Location ..
 
 Set-Location .\scenario_runner
 
-#$task = Get-Task
-$task = 3
-if ($task -gt 0)
+$order = Get-Order
+if ($order -gt 0)
 {
-    python run_experiment.py --title changelane --route srunner/data/routes_changelane.xml srunner/data/scenario_triggers_changelane.json 0 --reloadWorld --waitForEgo --params=$task
+    python run_experiment.py --title changelane --route srunner/data/routes_changelane.xml srunner/data/scenario_triggers_changelane.json 0 --reloadWorld --waitForEgo --params=$order
     
     Write-Host ""
     Write-Host "Done"
