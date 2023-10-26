@@ -1100,6 +1100,8 @@ Args:
 
 ---
 
+# Criteria
+
 ## Criterion
 
 Base class for all criteria used to evaluate a scenario for success/failure. Derived from `py_trees.behaviour.Behaviour`

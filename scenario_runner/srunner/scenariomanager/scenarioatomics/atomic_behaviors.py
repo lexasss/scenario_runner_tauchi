@@ -1889,7 +1889,7 @@ class WaypointFollower(AtomicBehavior):
     """
 
     def __init__(self, actor, target_speed=None, plan=None, blackboard_queue_name=None,
-                 avoid_collision=False, name="FollowWaypoints"):
+                 avoid_collision=False, local_planner_options=None, name="FollowWaypoints"):
         """
         Set up actor and local planner
         """
@@ -1906,6 +1906,7 @@ class WaypointFollower(AtomicBehavior):
         self._args_lateral_dict = {'K_P': 1.0, 'K_D': 0.01, 'K_I': 0.0, 'dt': 0.05}
         self._avoid_collision = avoid_collision
         self._unique_id = 0
+        self._local_planner_options = local_planner_options
 
     def initialise(self):
         """
@@ -1952,10 +1953,13 @@ class WaypointFollower(AtomicBehavior):
                 else:
                     self._actor_dict[actor] = [element[0].transform.location for element in self._plan]
         else:
+            opt_dict = {
+                'target_speed': self._target_speed * 3.6,
+                'lateral_control_dict': self._args_lateral_dict}
+            if self._local_planner_options is not None:
+                opt_dict.update(self._local_planner_options)
             local_planner = LocalPlanner(  # pylint: disable=undefined-variable
-                actor, opt_dict={
-                    'target_speed': self._target_speed * 3.6,
-                    'lateral_control_dict': self._args_lateral_dict})
+                actor, opt_dict=opt_dict)
 
             if self._plan is not None:
                 if isinstance(self._plan[0], carla.Location):
@@ -2095,7 +2099,7 @@ class LaneChange(WaypointFollower):
     """
 
     def __init__(self, actor, speed=10, direction='left', distance_same_lane=5, distance_other_lane=100,
-                 distance_lane_change=25, lane_changes=1, name='LaneChange'):
+                 distance_lane_change=25, lane_changes=1, avoid_collision=False, name='LaneChange'):
 
         self._direction = direction
         self._distance_same_lane = distance_same_lane
@@ -2108,7 +2112,10 @@ class LaneChange(WaypointFollower):
         self._pos_before_lane_change = None
         self._plan = None
 
-        super(LaneChange, self).__init__(actor, target_speed=speed, name=name)
+        super(LaneChange, self).__init__(actor,
+                                         target_speed=speed,
+                                         avoid_collision=avoid_collision,
+                                         name=name)
 
     def initialise(self):
 

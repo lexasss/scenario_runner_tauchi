@@ -18,6 +18,7 @@ The ego vehicle adjusts its velocity or changes the lane as well.
 """
 
 import carla
+import math
 
 from datetime import datetime
 
@@ -29,14 +30,18 @@ from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (ActorTrans
                                                                       LaneChange,
                                                                       WaypointFollower,
                                                                       Idle, AtomicBehavior,
-                                                                      ChangeAutoPilot,
-                                                                      ChangeActorTargetSpeed)
+                                                                      ChangeAutoPilot)
 # from srunner.scenariomanager.scenarioatomics.atomic_criteria import CollisionTest
 from srunner.scenariomanager.scenarioatomics.atomic_trigger_conditions import InTriggerDistanceToVehicle
+from srunner.scenariomanager.timer import GameTime
 from srunner.scenarios.basic_scenario import BasicScenario
 from srunner.tools.scenario_helper import get_waypoint_in_distance
 
 from srunner.scenariomanager.timer import TimeOut
+
+def print_debug(message):
+    current_time = datetime.now().strftime("%H:%M:%S")
+    print(f"{current_time} [DEBUG]: {message}")
 
 '''
 CUSTOM BEHAVIOURS
@@ -89,8 +94,7 @@ class DebugPrint(AtomicBehavior):
 
     def update(self):
         if DebugPrint.is_enabled:
-            current_time = datetime.now().strftime("%H:%M:%S")
-            print(f"{current_time} [DEBUG]: {self._message}")
+            print_debug(self._message)
         return BehaviourStatus.SUCCESS
 
 class WaitForEvent(TimeOut):
@@ -115,11 +119,10 @@ class WaitForEvent(TimeOut):
         self._event = event
 
     def initialise(self):
-        current_time = datetime.now().strftime("%H:%M:%S")
         if self._duration != float("inf"):
-            print(f"{current_time} [DEBUG]: {self.name} Event '{self._event}' will be set in {self._duration} s.")
+            print_debug(f"{self.name} Event '{self._event}' will be set in {self._duration} s.")
         else:
-            print(f"{current_time} [DEBUG]: {self.name} Waiting for event '{self._event}'")
+            print_debug(f"{self.name} Waiting for event '{self._event}'")
         return super(WaitForEvent, self).initialise()
 
     def update(self):
@@ -131,12 +134,10 @@ class WaitForEvent(TimeOut):
         status = super(WaitForEvent, self).update()
 
         if status == BehaviourStatus.SUCCESS:
-            current_time = datetime.now().strftime("%H:%M:%S")
-            print(f"{current_time} [DEBUG]: {self.name} Sets event '{self._event}'")
+            print_debug(f"{self.name} Sets event '{self._event}'")
             WaitForEvent._events. add(self._event)
         elif self._event in WaitForEvent._events:
-            current_time = datetime.now().strftime("%H:%M:%S")
-            print(f"{current_time} [DEBUG]: {self.name} Event '{self._event}' is set")
+            print_debug(f"{self.name} Event '{self._event}' is set")
             status = BehaviourStatus.SUCCESS
         
         return status
@@ -147,6 +148,99 @@ class WaitForEvent(TimeOut):
         Static method to reset the list of events
         """
         WaitForEvent._events = set(())
+
+def sigmoid_0(value, k):
+    return (2 / (1 + math.exp(-k * value) ) - 1)
+def sign(value):
+    return -1 if value < 0 else 1
+
+class VehicleFollower(WaypointFollower):
+    """
+    The car will accelerate until it is faster than another car, in order to catch up distance.
+    Then it tries to keep the distance, until timeout
+
+    Important parameters:
+    - actor: CARLA actor to execute the behaviour
+    - other_actor: Reference CARLA actor, actor you want to catch up to
+    - duration: total duration for catching up and following the vehicle
+    - distance_between: distance between the actors, positive to keep the actor behind, and 
+                        negative to keep the actor in front of the other_actor
+    - delta_velocity: max additional velocity to speed up
+    """
+
+    def __init__(self, actor, other_actor, duration, distance_between,
+                 delta_velocity=10,
+                 name="VehicleFollower"):
+        """
+        Setup parameters
+        """
+        super(VehicleFollower, self).__init__(actor, name=name,
+                                              avoid_collision=True,
+                                              local_planner_options={
+                                                  "max_throttle": 0.85,
+                                                  "max_brake": 0.2})
+
+        self._other_actor = other_actor
+        self._duration = duration
+        self._distance_between = distance_between
+        self._delta_velocity = delta_velocity  # 1m/s=3.6km/h
+
+        self._prev_location = None
+
+    def initialise(self):
+        self._start_time = GameTime.get_time()
+        super(VehicleFollower, self).initialise()
+
+    def update(self):
+
+        actor_location = CarlaDataProvider.get_location(self._actor)
+        other_location = CarlaDataProvider.get_location(self._other_actor)
+
+        if self._prev_location is not None:
+            # Actor is behind the Other when the dot product
+            # of Actor direction Other-Actor vector is positive
+            mx = actor_location.x - self._prev_location.x
+            my = actor_location.y - self._prev_location.y
+            dx = other_location.x - actor_location.x
+            dy = other_location.y - actor_location.y
+            dot_product = mx * dx + my * dy
+
+            # is_behind = dot_product > 0
+
+            # Distance is positive if the Actor is behind the Other, and
+            # it is negative if the Actor is in front of the Other
+            distance = actor_location.distance(other_location) * sign(dot_product)
+
+            # actor_speed = CarlaDataProvider.get_velocity(self._actor)
+            other_speed = CarlaDataProvider.get_velocity(self._other_actor)
+
+            distance_error = distance - self._distance_between
+
+            # Use max available speed increase when accelerating,
+            delta_velocity = self._delta_velocity
+            # but much less speed decrease when slowing down (it happens quite easily itself)
+            if distance_error < 0:
+                delta_velocity *= 0.25
+
+            extra_velocity = delta_velocity * sigmoid_0(0.1, distance_error)
+
+            new_speed = other_speed + extra_velocity
+
+            # print(f"dist = {distance:.1f}, err = {distance_error:.1f}, speed = {actor_speed * 3.6:.1f}, accel = {extra_velocity * 3.6:.1f}, target-speed={new_speed * 3.6:.1f}")
+
+            local_planner = self._local_planner_dict[self._actor]
+            local_planner.set_speed(new_speed * 3.6)
+
+        self._prev_location = actor_location
+
+        new_status = BehaviourStatus.RUNNING
+
+        if GameTime.get_time() - self._start_time > self._duration:
+            new_status = BehaviourStatus.SUCCESS
+        else:
+            new_status = super(VehicleFollower, self).update()
+
+        return new_status
 
 
 '''
@@ -177,7 +271,7 @@ class ChangeLane(BasicScenario):
     EVENT_SESSION_3_ENDS = 2
 
     DRIVING_DURATION_SESSION = 30        # seconds
-    DRIVING_DURATION_BEFORE_EVENT = 15   # seconds  300
+    DRIVING_DURATION_BEFORE_EVENT = 45   # seconds  300
     DRIVING_DURATION_AFTER_EVENT = 5     # seconds
 
     NUMBER_OF_OPPONENTS = 2;
@@ -439,10 +533,14 @@ class ChangeLane(BasicScenario):
         ego_car_sequence = Sequence("Ego_SessionChangeLane")
         ego_car_sequence.add_children([
             DebugPrint(self._ego_car, "Ego SESSION change lane START"),
-            self._drive_straight_EGO_CAR(
-                True,
-                ChangeLane.MAIN_VELOCITY + ChangeLane.EGO_CAR_APPROACH_VELOCITY,
+            self._drive_behind(
+                opponent,
+                self._distance_between_cars,
                 ChangeLane.DRIVING_DURATION_BEFORE_EVENT),
+            # self._drive_straight_EGO_CAR(
+            #     True,
+            #     ChangeLane.MAIN_VELOCITY + ChangeLane.EGO_CAR_APPROACH_VELOCITY,
+            #     ChangeLane.DRIVING_DURATION_BEFORE_EVENT),
             DebugPrint(self._ego_car, "Ego start approaching"),
             self._wait_until_close(
                 self._ego_car, "Ego",
@@ -452,7 +550,8 @@ class ChangeLane(BasicScenario):
             self._follow_waypoints(
                 self._ego_car, "Ego",
                 ChangeLane.MAIN_VELOCITY,
-                event_id=until_event),
+                event_id=until_event,
+                avoid_collision=False),
             DebugPrint(self._ego_car, "Ego SESSION change lane END")
         ])
 
@@ -469,7 +568,7 @@ class ChangeLane(BasicScenario):
                 opponent, name,
                 ChangeLane.MAIN_VELOCITY,
                 ChangeLane.DRIVING_DURATION_BEFORE_EVENT),
-            DebugPrint(opponent, f"{name} waiting for approach"),
+            DebugPrint(opponent, f"{name} waiting until Ego approaches"),
             self._wait_until_close(
                 opponent, name,
                 self._ego_car,
@@ -516,38 +615,59 @@ class ChangeLane(BasicScenario):
 
         return sequence
 
+    def _drive_behind(self, opponent, distance, duration):
+        """
+        Ego cars enters autopilot mode and follows the an opponent until timeout
+        """
+        sequence = Sequence("Ego_DriveBehind")
+
+        sequence.add_children([
+            DebugPrint(self._ego_car, f"Ego drive behind START"),
+            ChangeAutoPilot(
+                self._ego_car,
+                activate=True,
+                name="Ego_AutoPilot",
+                parameters={
+                    "auto_lane_change": False,
+                    "distance_between_vehicles": 5,
+                    "ignore_vehicles_percentage": 0
+                }
+            ),
+            VehicleFollower(self._ego_car, opponent, duration, distance),
+            DebugPrint(self._ego_car, f"Ego drive behind END")
+        ])
+
+        return sequence
+
     def _drive_straight_EGO_CAR(self, is_autopilot, velocity, duration):
         """
         Ego cars enters autopilot mode and follows the lane waypoints until timeout
         """
         sequence = Sequence("Ego_DriveStraight")
-        sequence.add_child(DebugPrint(self._ego_car, f"Ego drive straight START"))
-
-        # -- Set auto-pilot
-        # Note that autopilot may overtake the control with some delay
-        sequence.add_child(ChangeAutoPilot(
-            self._ego_car,
-            activate=is_autopilot,
-            name="Ego_AutoPilot",
-            parameters={
-                "auto_lane_change": False,
-                "distance_between_vehicles": 5,
-                "ignore_vehicles_percentage": 0
-            }
-        ))
-        sequence.add_child(DebugPrint(self._ego_car, f"Ego auto-pilot: {is_autopilot}"))
-
-        sequence.add_child(self._follow_waypoints(
-            self._ego_car, "Ego",
-            velocity,
-            duration))
-        sequence.add_child(DebugPrint(self._ego_car, f"Ego drive straight END"))
+        sequence.add_children([
+            DebugPrint(self._ego_car, f"Ego drive straight START"),
+            ChangeAutoPilot(
+                self._ego_car,
+                activate=is_autopilot,
+                name="Ego_AutoPilot",
+                parameters={
+                    "auto_lane_change": False,
+                    "distance_between_vehicles": 5,
+                    "ignore_vehicles_percentage": 0
+                }),
+            DebugPrint(self._ego_car, f"Ego auto-pilot: {is_autopilot}"),
+            self._follow_waypoints(
+                self._ego_car, "Ego",
+                velocity,
+                duration),
+            DebugPrint(self._ego_car, f"Ego drive straight END")
+        ])
 
         return sequence
 
     def _drive_straight_TESLA(self, vehicle, name, velocity,
                               duration=None,
-                              apply_slow_acceleration=False,
+                              apply_slow_acceleration=False,    # currently never used with 'True'.. may be removed
                               until_event=None):
         """
         A car follows the lane waypoints until timeout or until ego/opponen car finish
@@ -578,7 +698,7 @@ class ChangeLane(BasicScenario):
             velocity,
             duration_left,
             event_id=until_event))
-        sequence.add_child(DebugPrint(vehicle, f"{name} drive straight END, uge={until_event}"))
+        sequence.add_child(DebugPrint(vehicle, f"{name} drive straight END"))
 
         return sequence
 
@@ -588,18 +708,17 @@ class ChangeLane(BasicScenario):
         """
         parallel = Parallel(f"{name}_FollowLaneUntilVehiclesAreClose",
                             policy=ParallelPolicy.SUCCESS_ON_ONE)
-        # -- Follow the lane ... 
-        parallel.add_child(WaypointFollower(
-            vehicle,
-            velocity,
-            name=f"{name}_FollowLane"))
-
-        # -- Until the opponent is close enough
-        parallel.add_child(InTriggerDistanceToVehicle(
-            approaching_car,
-            vehicle,
-            distance=self._distance_between_cars,
-            name=f"{name}_UntilVehiclesAreClose"))
+        parallel.add_children([
+            WaypointFollower(
+                vehicle,
+                velocity,
+                name=f"{name}_FollowLane"),
+            InTriggerDistanceToVehicle(
+                approaching_car,
+                vehicle,
+                distance=self._distance_between_cars,
+                name=f"{name}_UntilVehiclesAreClose")
+        ])
 
         return parallel
 
@@ -627,6 +746,7 @@ class ChangeLane(BasicScenario):
             distance_other_lane=ChangeLane.MAIN_VELOCITY * 1.5,
             distance_lane_change=ChangeLane.MAIN_VELOCITY * ChangeLane.LANE_CHANGE_DISTANCE_K,
             lane_changes=2,
+            avoid_collision=False,
             name=f"{name}_ChangingLane"))
 
         # -- If needed: turn off all lights
@@ -643,7 +763,7 @@ class ChangeLane(BasicScenario):
     LEVEL 3 (SUB-SUB-BEHAVIOUR)
     """
 
-    def _follow_waypoints(self, vehicle, name, velocity, duration=None, event_id=None):
+    def _follow_waypoints(self, vehicle, name, velocity, duration=None, event_id=None, avoid_collision=True):
         """
         Follows waypoints
         1. duration = None:
@@ -660,7 +780,7 @@ class ChangeLane(BasicScenario):
         parallel.add_child(WaypointFollower(
             vehicle,
             velocity,
-            avoid_collision=True,
+            avoid_collision=avoid_collision,
             name=f"{name}_LaneFollower"))
 
         if duration is not None:
