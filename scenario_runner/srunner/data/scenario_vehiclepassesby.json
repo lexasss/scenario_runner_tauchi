@@ -1,0 +1,27 @@
+{
+    "available_scenarios": [
+        {
+            "Town04": [
+                {
+                    "scenario_type": "VehiclePassesBy",
+                    "available_event_configurations": [
+                        {
+                            "transform": {
+                                "x": "-170",
+                                "y": "12.7",
+                                "z": "7",
+                                "yaw": "180"
+                            },
+                            "other_actors": {
+                                "front": [
+                                    { "x": "-100", "y": "9.8", "z": "10", "yaw": "180", "model": "vehicle.tesla.model3" },
+                                    { "x": "-100", "y": "15.8", "z": "10", "yaw": "180", "model": "vehicle.tesla.model3" }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

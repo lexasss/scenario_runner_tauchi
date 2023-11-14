@@ -33,6 +33,7 @@ from srunner.tools.route_manipulation import interpolate_trajectory
 from srunner.tools.py_trees_port import oneshot_behavior
 
 from srunner.scenarios.change_lane import ChangeLane
+from srunner.scenarios.vehicle_passes_by import VehiclePassesBy
 
 from srunner.scenariomanager.scenarioatomics.atomic_criteria import (CollisionTest,
                                                                      InRouteTest,
@@ -59,7 +60,8 @@ class DebugMsg(AtomicBehavior):
 SECONDS_GIVEN_PER_METERS = 0.4
 
 NUMBER_CLASS_TRANSLATION = {
-    "ChangeLane": ChangeLane
+    "ChangeLane": ChangeLane,
+    "VehiclePassesBy": VehiclePassesBy,
 }
 
 

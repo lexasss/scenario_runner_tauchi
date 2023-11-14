@@ -1,10 +1,9 @@
 # This is the script to run ChangeLane procedure defined in the
-#    srunner\scenarios\change_lane.py file
-# Files
-#    srunner/data/routes_changelane.xml
-#    srunner/data/scenario_triggers_changelane.json
+#    srunner/scenarios/change_lane.py file
+#    srunner/data/scenario_changelane.json
+# Files modified
 #    srunner/scenarios/route_scenario.py
-# were modified accordingly
+#    srunner/data/routes_town04_circular.xml
 
 function Get-Order
 {
@@ -47,7 +46,7 @@ Set-Location .\scenario_runner
 $order = Get-Order
 if ($order -gt 0)
 {
-    python run_experiment.py --title changelane --route srunner/data/routes_changelane.xml srunner/data/scenario_triggers_changelane.json 0 --reloadWorld --waitForEgo --params=$order
+    python run_experiment.py --title changelane --route srunner/data/routes_town04_circular.xml srunner/data/scenario_changelane.json 0 --reloadWorld --waitForEgo --params=$order
     
     Write-Host ""
     Write-Host "Done"
