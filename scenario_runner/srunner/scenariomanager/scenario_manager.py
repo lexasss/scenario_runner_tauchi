@@ -65,6 +65,9 @@ class ScenarioManager(object):
         self.start_system_time = None
         self.end_system_time = None
 
+        # TAUCHI - road data
+        # self.pos_log = open("position.txt", "w")
+
     def _reset(self):
         """
         Reset all parameters
@@ -81,6 +84,9 @@ class ScenarioManager(object):
         """
         This function triggers a proper termination of a scenario
         """
+
+        # TAUCHI - road data
+        # self.pos_log.close()
 
         if self._watchdog is not None:
             self._watchdog.stop()
@@ -185,10 +191,10 @@ class ScenarioManager(object):
             # Tick scenario
             self.scenario_tree.tick_once()
 
-            """ TAUCHI - uncomment the next 2 lines if ou need to check 
-            what are the locations the ego car is passing via """
+            # TAUCHI - road data - 2 lines
             # ego_location = CarlaDataProvider.get_location(self.ego_vehicles[0])
-            # print(ego_location)
+            # self.pos_log.write(f'{ego_location.x}\t{ego_location.y}\t{ego_location.z}\n')
+
             if self._debug_mode:
                 print("\n")
                 py_trees.display.print_ascii_tree(self.scenario_tree, show_status=True)

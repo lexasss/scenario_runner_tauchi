@@ -197,13 +197,13 @@ class VehicleFollower(WaypointFollower):
         other_location = CarlaDataProvider.get_location(self._other_actor)
 
         if self._prev_location is not None:
-            # Actor is behind the Other when the dot product
-            # of Actor direction Other-Actor vector is positive
-            mx = actor_location.x - self._prev_location.x
-            my = actor_location.y - self._prev_location.y
-            dx = other_location.x - actor_location.x
-            dy = other_location.y - actor_location.y
-            dot_product = mx * dx + my * dy
+            # The Actor is behind the Other when the dot product
+            # of Actor's direction and Actor-to-Other vector is positive
+            dx1 = actor_location.x - self._prev_location.x
+            dy1 = actor_location.y - self._prev_location.y
+            dx2 = other_location.x - actor_location.x
+            dy2 = other_location.y - actor_location.y
+            dot_product = dx1 * dx2 + dy1 * dy2
 
             # is_behind = dot_product > 0
 
@@ -220,10 +220,9 @@ class VehicleFollower(WaypointFollower):
             delta_velocity = self._delta_velocity
             # but much less speed decrease when slowing down (it happens quite easily itself)
             if distance_error < 0:
-                delta_velocity *= 0.25
+                delta_velocity *= 0.35
 
             extra_velocity = delta_velocity * sigmoid_0(0.1, distance_error)
-
             new_speed = other_speed + extra_velocity
 
             # print(f"dist = {distance:.1f}, err = {distance_error:.1f}, speed = {actor_speed * 3.6:.1f}, accel = {extra_velocity * 3.6:.1f}, target-speed={new_speed * 3.6:.1f}")
@@ -258,8 +257,8 @@ class ChangeLane(BasicScenario):
     This is a single ego vehicle scenario
     """
 
-    LANE_CHANGE_ORDER_SAFE = 1
-    LANE_CHANGE_ORDER_UNSAFE = 2
+    LANE_CHANGE_ORDER_SAFE_UNSAFE = 1
+    LANE_CHANGE_ORDER_UNSAFE_SAFE = 2
 
     TASK_JUST_DRIVING = 0
     TASK_LANE_CHANGE_SAFE = 1
@@ -270,15 +269,16 @@ class ChangeLane(BasicScenario):
     EVENT_SESSION_2_ENDS = 1
     EVENT_SESSION_3_ENDS = 2
 
-    DRIVING_DURATION_SESSION = 30        # seconds
-    DRIVING_DURATION_BEFORE_EVENT = 45   # seconds  300
+    DRIVING_DURATION_SESSION = 342       # seconds
+    DRIVING_DURATION_BEFORE_EVENT = 342  # seconds
     DRIVING_DURATION_AFTER_EVENT = 5     # seconds
 
     NUMBER_OF_OPPONENTS = 2;
     MAIN_VELOCITY = 25.0                    # m/s
     MAX_SPAWN_DISTANCE_FROM_REFERENCE = 5   # meters
     DISTANCE_BETWEEN_CARS_SAFE = 26         # meters
-    DISTANCE_BETWEEN_CARS_UNSAFE = 8        # meters
+    DISTANCE_BETWEEN_CARS_UNSAFE = 7        # meters
+    EXTRA_DISTANCE_BETWEEN_CARS_IN_DRIVING_BEHIND = 3    # meters
     EGO_CAR_APPROACH_VELOCITY = 1.5         # m/s
     EXTRA_RIGHT_LANE_SPEED = 2              # m/s
 
@@ -379,7 +379,7 @@ class ChangeLane(BasicScenario):
 
         # -- First lane-change task
         task = ChangeLane.TASK_LANE_CHANGE_SAFE \
-                    if self._laneChangeOrder == ChangeLane.LANE_CHANGE_ORDER_SAFE else \
+                    if self._laneChangeOrder == ChangeLane.LANE_CHANGE_ORDER_SAFE_UNSAFE else \
                     ChangeLane.TASK_LANE_CHANGE_UNSAFE
         self._set_parameters(task=task)
 
@@ -399,7 +399,7 @@ class ChangeLane(BasicScenario):
 
         # -- Second lane-change task
         task = ChangeLane.TASK_LANE_CHANGE_UNSAFE \
-                    if self._laneChangeOrder == ChangeLane.LANE_CHANGE_ORDER_SAFE else \
+                    if self._laneChangeOrder == ChangeLane.LANE_CHANGE_ORDER_SAFE_UNSAFE else \
                     ChangeLane.TASK_LANE_CHANGE_SAFE
         self._set_parameters(task=task)
 
@@ -535,7 +535,7 @@ class ChangeLane(BasicScenario):
             DebugPrint(self._ego_car, "Ego SESSION change lane START"),
             self._drive_behind(
                 opponent,
-                self._distance_between_cars,
+                self._distance_between_cars + ChangeLane.EXTRA_DISTANCE_BETWEEN_CARS_IN_DRIVING_BEHIND,
                 ChangeLane.DRIVING_DURATION_BEFORE_EVENT),
             # self._drive_straight_EGO_CAR(
             #     True,
