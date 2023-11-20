@@ -1,9 +1,9 @@
 # This is the script to run VehiclePassesBy procedure defined in the
-#    srunner\scenarios\vehicle_passes_by.py file
-# Files used
-#    srunner/data/routes_town04_circular.xml
-#    srunner/data/scenario_triggers_vehiclepassesby.json
+#    srunner/scenarios/vehicle_passes_by.py file
+#    srunner/data/scenario_vehiclepassesby.json
+# Files modified
 #    srunner/scenarios/route_scenario.py
+#    srunner/data/routes_town04_circular.xml
 
 function Get-Side
 {

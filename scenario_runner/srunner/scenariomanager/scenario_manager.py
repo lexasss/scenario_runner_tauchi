@@ -22,7 +22,6 @@ from srunner.scenariomanager.result_writer import ResultOutputProvider
 from srunner.scenariomanager.timer import GameTime
 from srunner.scenariomanager.watchdog import Watchdog
 
-
 class ScenarioManager(object):
 
     """
@@ -65,8 +64,8 @@ class ScenarioManager(object):
         self.start_system_time = None
         self.end_system_time = None
 
-        # TAUCHI - road data
-        # self.pos_log = open("position.txt", "w")
+        # TAUCHI trace
+        # self.trace_log = open("trace.txt", "w")
 
     def _reset(self):
         """
@@ -85,8 +84,8 @@ class ScenarioManager(object):
         This function triggers a proper termination of a scenario
         """
 
-        # TAUCHI - road data
-        # self.pos_log.close()
+        # TAUCHI trace
+        # self.trace_log.close()
 
         if self._watchdog is not None:
             self._watchdog.stop()
@@ -138,6 +137,7 @@ class ScenarioManager(object):
             world = CarlaDataProvider.get_world()
             if world:
                 snapshot = world.get_snapshot()
+                
                 # TAUCHI - print out the ego car coordinates and rotation
                 # egocars = world.get_actors().filter("vehicle.dreyevr.egovehicle")
                 # if len(egocars) > 0:
@@ -147,6 +147,7 @@ class ScenarioManager(object):
                 #         transform = egocar_snapshot.get_transform()
                 #         print('==== EGOCAR ==== ', transform.location, transform.rotation)
                 # TAUCHI END
+                
                 if snapshot:
                     timestamp = snapshot.timestamp
             if timestamp:
@@ -191,9 +192,10 @@ class ScenarioManager(object):
             # Tick scenario
             self.scenario_tree.tick_once()
 
-            # TAUCHI - road data - 2 lines
+            # TAUCHI trace
             # ego_location = CarlaDataProvider.get_location(self.ego_vehicles[0])
-            # self.pos_log.write(f'{ego_location.x}\t{ego_location.y}\t{ego_location.z}\n')
+            # self.trace_log.write(f'{ego_location.x}\t{ego_location.y}\t{ego_location.z}\n')
+            # TAUCHI END
 
             if self._debug_mode:
                 print("\n")

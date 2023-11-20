@@ -42,14 +42,11 @@ class VehiclePassesBy(BasicScenario):
     OPPONENT_SIDE_LEFT = 0
     OPPONENT_SIDE_RIGHT = 1
 
-    OPPONENT_SIDE_NAME = ["Left", "Right"]
-
     DISTANCE_BETWEEN_CARS = 50              # meters
     DISTANCE_TO_APPROACH = 10               # meters
-    DISTANCE_TO_OPPONENT_WHEN_FINISHED = 40 # meters
+    DISTANCE_TO_OPPONENT_WHEN_FINISHED = 70 # meters
 
     DRIVING_DURATION_BEHIND = 45            # seconds
-    DRIVING_DURATION_PASSING_BY = 40        # seconds
 
     VELOCITY_MAIN = 25.0                    # m/s
     VELOCITY_PASSING_BY = 5                 # m/s
@@ -81,6 +78,15 @@ class VehiclePassesBy(BasicScenario):
 
         print(f"VEHICLE PASSES BY: params = {params}")
         
+    # override - does not help to set the fog, so disabled
+    # def _initialize_environment(self, world):
+    #     super(VehiclePassesBy, self)._initialize_environment(world)
+
+    #     weather = world.get_weather()
+    #     weather.fog_density = 60
+    #     # weather.fog_distance = 50
+    #     world.set_weather(weather)
+
     # override
     def _initialize_actors(self, config):
 
@@ -89,7 +95,6 @@ class VehiclePassesBy(BasicScenario):
         # add actors from JSON file
         for actor in config.other_actors:
             
-            print(actor.model)
             if (self._opponent_side == VehiclePassesBy.OPPONENT_SIDE_LEFT and actor.transform.location.y > 12.7) or \
                (self._opponent_side == VehiclePassesBy.OPPONENT_SIDE_RIGHT and actor.transform.location.y < 12.7):
                

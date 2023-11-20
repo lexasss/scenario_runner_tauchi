@@ -68,13 +68,16 @@ class ChangeLane(BasicScenario):
     DRIVING_DURATION_AFTER_EVENT = 5     # seconds
 
     NUMBER_OF_OPPONENTS = 2;
+
     MAIN_VELOCITY = 25.0                    # m/s
-    MAX_SPAWN_DISTANCE_FROM_REFERENCE = 5   # meters
-    DISTANCE_BETWEEN_CARS_SAFE = 26         # meters
-    DISTANCE_BETWEEN_CARS_UNSAFE = 7        # meters
+    EXTRA_LANE_CHANGING_VELOCITY = 2              # m/s
+    
+    DISTANCE_BETWEEN_CARS_SAFE = 30         # meters
+    DISTANCE_BETWEEN_CARS_UNSAFE = 8        # meters
     EXTRA_DISTANCE_BETWEEN_CARS_IN_DRIVING_BEHIND = 3    # meters
-    EGO_CAR_APPROACH_VELOCITY = 1.5         # m/s
-    EXTRA_RIGHT_LANE_SPEED = 2              # m/s
+
+    # EGO_CAR_APPROACH_VELOCITY = 3           # m/s
+    # MAX_SPAWN_DISTANCE_FROM_REFERENCE = 5   # meters
 
     ACCELERATION_SUPPRESSIONS = [       # list of speed-delta (m/s) and duration (seconds)
         (14, 15),
@@ -84,7 +87,7 @@ class ChangeLane(BasicScenario):
     # Lane change distance coefficient applied to Tesla's velocity:
     #   5.8 for normal
     #   3 for imminent collision
-    LANE_CHANGE_DISTANCE_K = 3              # Oleg: weird behaiour for various K
+    LANE_CHANGE_DISTANCE_K = 4              # Oleg: weird behaiour for various K
     LANE_CHANGE_LIGHT_BLINK_DURATION = 2    # seconds
     
     def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
@@ -118,22 +121,25 @@ class ChangeLane(BasicScenario):
 
         self._ego_car = self.ego_vehicles[0]
 
-        # add actors from xml file
+        # add actors from JSON file
         for actor in config.other_actors:
-            
-            vehicle = CarlaDataProvider.request_new_actor(actor.model, actor.transform)
+            vehicle_transform = actor.transform
+            vehicle = CarlaDataProvider.request_new_actor(actor.model, vehicle_transform)
             vehicle.set_simulate_physics(enabled=False)
             self.other_actors.append(vehicle)
 
             # opponents are the first N cars in the list
             if len(self._opponents) < ChangeLane.NUMBER_OF_OPPONENTS:
-                self._opponents.append((vehicle, actor.transform))
+                self._opponents.append((vehicle, vehicle_transform))
             
+            # the rest cars will have no task other than simply following their lane
             if len(self.other_actors) > ChangeLane.NUMBER_OF_OPPONENTS:
-                wp = self._map.get_waypoint(actor.transform.location)
-                # TODO figure out why the next line is needed
-                wp, _ = get_waypoint_in_distance(wp, ChangeLane.MAX_SPAWN_DISTANCE_FROM_REFERENCE)
-                self._other_cars.append((vehicle, wp.transform))
+                # TODO figure out why the next lines are needed
+                # wp = self._map.get_waypoint(vehicle_transform.location)
+                # wp, _ = get_waypoint_in_distance(wp, ChangeLane.MAX_SPAWN_DISTANCE_FROM_REFERENCE)
+                # vehicle_transform = wp.transform
+
+                self._other_cars.append((vehicle, vehicle_transform))
 
         print(f"CHANGE LANE: {len(self.other_actors)} surrounding cars initialized")
 
@@ -219,11 +225,13 @@ class ChangeLane(BasicScenario):
         # -- Behaviours for other cars
         carID = 1
         for (car, transform) in self._other_cars:
+            velocity = ChangeLane.MAIN_VELOCITY
+
             # cars in the left-most lane move a bit faster
-            velocity = ChangeLane.MAIN_VELOCITY + \
-                            (ChangeLane.EXTRA_RIGHT_LANE_SPEED \
-                                if transform.location.y > 18 else
-                            0)
+            # velocity = ChangeLane.MAIN_VELOCITY + \
+            #                 (ChangeLane.EXTRA_LANE_CHANGING_VELOCITY \
+            #                     if transform.location.y > 18 else
+            #                 0)
             car_name = f"OtherCar{carID}"
             car_sequence = Sequence(car_name)
             car_sequence.add_child(self._init_vehicle(car, car_name, transform))
@@ -331,15 +339,12 @@ class ChangeLane(BasicScenario):
                 opponent,
                 self._distance_between_cars + ChangeLane.EXTRA_DISTANCE_BETWEEN_CARS_IN_DRIVING_BEHIND,
                 ChangeLane.DRIVING_DURATION_BEFORE_EVENT),
-            # self._drive_straight_EGO_CAR(
-            #     True,
-            #     ChangeLane.MAIN_VELOCITY + ChangeLane.EGO_CAR_APPROACH_VELOCITY,
-            #     ChangeLane.DRIVING_DURATION_BEFORE_EVENT),
             DebugPrint(self._ego_car, "Ego start approaching"),
-            self._wait_until_close(
-                self._ego_car, "Ego",
-                opponent,
-                ChangeLane.MAIN_VELOCITY + ChangeLane.EGO_CAR_APPROACH_VELOCITY),
+            self._get_close(self._ego_car, "Ego", opponent),
+            # self._wait_until_close(
+            #     self._ego_car, "Ego",
+            #     opponent,
+            #     ChangeLane.MAIN_VELOCITY + ChangeLane.EGO_CAR_APPROACH_VELOCITY),
             DebugPrint(self._ego_car, "Ego close enough, waiting until opponent changes a lane"),
             self._follow_waypoints(
                 self._ego_car, "Ego",
@@ -496,6 +501,25 @@ class ChangeLane(BasicScenario):
 
         return sequence
 
+    def _get_close(self, vehicle, name, opponent):
+        """
+        Gets close to another car
+        """
+        parallel = Parallel(f"{name}_GetCloseToOpponent",
+                            policy=ParallelPolicy.SUCCESS_ON_ONE)
+        parallel.add_children([
+            VehicleFollower(vehicle, opponent,
+                duration=float("inf"),
+                distance_between=self._distance_between_cars - 1),  # -1 ensures the car get close enough
+            InTriggerDistanceToVehicle(
+                opponent,
+                vehicle,
+                distance=self._distance_between_cars,
+                name=f"{name}_UntilVehiclesAreClose")
+        ])
+
+        return parallel
+
     def _wait_until_close(self, vehicle, name, approaching_car, velocity):
         """
         Wait until two cars approach each other
@@ -535,7 +559,7 @@ class ChangeLane(BasicScenario):
         # Note how the lane changing distance is dependent on the speed
         sequence.add_child(LaneChange(
             opponent,
-            speed=ChangeLane.MAIN_VELOCITY + ChangeLane.EXTRA_RIGHT_LANE_SPEED,
+            speed=ChangeLane.MAIN_VELOCITY + ChangeLane.EXTRA_LANE_CHANGING_VELOCITY,
             direction="left",
             distance_other_lane=ChangeLane.MAIN_VELOCITY * 1.5,
             distance_lane_change=ChangeLane.MAIN_VELOCITY * ChangeLane.LANE_CHANGE_DISTANCE_K,
