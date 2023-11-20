@@ -432,7 +432,7 @@ class ChangeLane(BasicScenario):
                     "ignore_vehicles_percentage": 0
                 }
             ),
-            VehicleFollower(self._ego_car, opponent, duration, distance),
+            VehicleFollower(self._ego_car, opponent, distance, duration),
             DebugPrint(self._ego_car, f"Ego drive behind END")
         ])
 
@@ -509,8 +509,7 @@ class ChangeLane(BasicScenario):
                             policy=ParallelPolicy.SUCCESS_ON_ONE)
         parallel.add_children([
             VehicleFollower(vehicle, opponent,
-                duration=float("inf"),
-                distance_between=self._distance_between_cars - 1),  # -1 ensures the car get close enough
+                self._distance_between_cars - 1),   # -1 ensures the car get close enough
             InTriggerDistanceToVehicle(
                 opponent,
                 vehicle,

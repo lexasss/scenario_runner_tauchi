@@ -135,7 +135,8 @@ class VehicleFollower(WaypointFollower):
     - delta_velocity: max additional velocity to speed up
     """
 
-    def __init__(self, actor, other_actor, duration, distance_between,
+    def __init__(self, actor, other_actor, distance_between,
+                 duration=float("inf"), 
                  delta_velocity=10,
                  name="VehicleFollower"):
         """
