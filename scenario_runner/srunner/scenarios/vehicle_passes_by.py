@@ -13,7 +13,6 @@ The scenario realizes a driving behavior, in which the user-controlled ego vehic
 and another runs behind it for some time. The this car accelerates and passes by the ego-var with a known speed.
 """
 
-import carla
 import operator
 
 
@@ -46,7 +45,7 @@ class VehiclePassesBy(BasicScenario):
     DISTANCE_TO_APPROACH = 10               # meters
     DISTANCE_TO_OPPONENT_WHEN_FINISHED = 70 # meters
 
-    DRIVING_DURATION_BEHIND = 45            # seconds
+    DURATION_DRIVING_BEHIND = 50            # seconds
 
     VELOCITY_MAIN = 25.0                    # m/s
     VELOCITY_PASSING_BY = 5                 # m/s
@@ -68,6 +67,7 @@ class VehiclePassesBy(BasicScenario):
         self._ego_car = None                # carla.Vehicle
         self._opponent = None               # carla.Vehicle
         self._opponent_transform = None     # carla.Transform
+        self._other_cars = []               # [(carla.Vehicle, carla.Transform)]
 
         super(VehiclePassesBy, self).__init__("VehiclePassesBy",
             ego_vehicles,
@@ -95,26 +95,19 @@ class VehiclePassesBy(BasicScenario):
         # add actors from JSON file
         for actor in config.other_actors:
             
+            vehicle = CarlaDataProvider.request_new_actor(actor.model, actor.transform)
+            vehicle.set_simulate_physics(enabled=False)
+            self.other_actors.append(vehicle)
+
             if (self._opponent_side == VehiclePassesBy.OPPONENT_SIDE_LEFT and actor.transform.location.y > 12.7) or \
                (self._opponent_side == VehiclePassesBy.OPPONENT_SIDE_RIGHT and actor.transform.location.y < 12.7):
                
-                vehicle = CarlaDataProvider.request_new_actor(actor.model, actor.transform)
-                vehicle.set_simulate_physics(enabled=False)
-                self.other_actors.append(vehicle)
-
                 self._opponent = vehicle
-
-                # TODO figure out why the next line is needed
-                # wp = self._map.get_waypoint(actor.transform.location)
-                # wp, _ = get_waypoint_in_distance(wp, ChangeLane.MAX_SPAWN_DISTANCE_FROM_REFERENCE)
-                # self._opponent_transform = wp.transform
-
                 self._opponent_transform = actor.transform
 
                 print(f"VEHICLE PASSES BY: opponent initialized")
-
-                # Ignore any other vehicles
-                break
+            else:
+                self._other_cars.append((vehicle, actor.transform))
 
     # override
     def _create_behavior(self):
@@ -153,7 +146,8 @@ class VehiclePassesBy(BasicScenario):
             self._opponent,
             self._ego_car,
             VehiclePassesBy.DISTANCE_BETWEEN_CARS,
-            VehiclePassesBy.DRIVING_DURATION_BEHIND))
+            VehiclePassesBy.DURATION_DRIVING_BEHIND,
+            name=f"Opponent_VehicleFollower"))
         opponent_sequence.add_child(DebugPrint(self._opponent, "== STAGE 2 - approaching =="))
         opponent_sequence.add_child(self._drive_until_close(
             self._opponent, "Opponent",
@@ -167,6 +161,28 @@ class VehiclePassesBy(BasicScenario):
             VehiclePassesBy.DISTANCE_TO_OPPONENT_WHEN_FINISHED,
             VehiclePassesBy.VELOCITY_MAIN + VehiclePassesBy.VELOCITY_PASSING_BY))
         opponent_sequence.add_child(DebugPrint(self._opponent, "== STAGE 2 - done =="))
+
+        # Other cars
+        i = 1
+        for other_car, other_car_transform in self._other_cars:
+            other_car_sequence = Sequence(f"OtherCar{i}")
+            other_car_sequence.add_child(ActorTransformSetter(
+                other_car,
+                other_car_transform,
+                name=f"OtherCar{i}_Placement"))
+            other_car_sequence.add_child(ChangeAutoPilot(
+                other_car,
+                activate=True,
+                name=f"OtherCar{i}_AutoPilot",
+                parameters={
+                    "auto_lane_change": False
+                }))
+            other_car_sequence.add_child(VehicleFollower(
+                other_car,
+                self._ego_car,
+                VehiclePassesBy.DISTANCE_BETWEEN_CARS,
+                name=f"OtherCar{i}_VehicleFollower"))
+            root.add_child(other_car_sequence)
 
         # Populate the root sequence
         root.add_child(ego_car_sequence)
