@@ -24,7 +24,7 @@ lines = input.readlines()
 current_distance = -1
 sx, sy, sz = 0, 0, 0
 
-offset = OFFSET * (1 if random.choice([0, 1]) == 1 else -1)
+angle = (90 if random.random() < 0.5 else -90) * math.pi / 180
 interval = INTERVAL_AVG + random.randrange(-INTERVAL_SD, INTERVAL_SD)
 
 for line in lines:
@@ -41,15 +41,17 @@ for line in lines:
                 
                 yaw = math.atan2(y - sy, x - sx)
                 
-                vx = x + offset * math.sin(yaw)
-                vy = y + offset * math.cos(yaw)
+                vx = x + OFFSET * math.cos(yaw + angle)
+                vy = y + OFFSET * math.sin(yaw + angle)
                 vz = z + 0.1
                 
                 print(f'{vx:.1f}\t{vy:.1f}\t{vz:.1f}')
                 output.write(f'    carla.Location({vx:.1f}, {vy:.1f}, {vz:.1f}),\n')
 
-                offset = OFFSET * (1 if random.choice([0, 1]) == 1 else -1)
                 interval = INTERVAL_AVG + random.randrange(-INTERVAL_SD, INTERVAL_SD)
+                
+                if random.random() < 0.5:
+                    angle = -angle
         
         sx, sy, sz = x, y, z
 

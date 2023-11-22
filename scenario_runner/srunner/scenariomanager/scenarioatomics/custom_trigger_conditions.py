@@ -11,27 +11,29 @@ from srunner.scenariomanager.scenarioatomics.atomic_behaviors import calculate_d
 
 DISTRACTOR = 'trafficcone01'
 DISTRACTOR_LOCATIONS = [
-    carla.Location(-341.3, 19.0, 0.2),
-    carla.Location(-513.7, 173.2, 0.1),
-    carla.Location(-370.7, 416.0, 0.1),
-    carla.Location(-39.1, 355.4, 0.1),
-    carla.Location(2.3, 76.7, 0.1),
-    carla.Location(14.2, -197.7, 0.1),
-    carla.Location(175.0, -378.0, 0.1),
-    carla.Location(382.6, -179.7, 0.1),
-    carla.Location(282.9, 23.1, 2.4),
-    carla.Location(-23.3, 19.5, 10.7),
+    carla.Location(-282.1, 6.1, 1.3),
+    carla.Location(-499.9, 93.2, 0.1),
+    carla.Location(-460.0, 375.8, 0.1),
+    carla.Location(-195.9, 422.0, 0.1),
+    carla.Location(1.7, 242.6, 0.1),
+    carla.Location(14.8, -39.0, 0.1),
+    carla.Location(30.8, -287.2, 0.1),
+    carla.Location(315.2, -362.6, 0.1),
+    carla.Location(382.0, -120.1, 0.1),
+    carla.Location(156.2, 8.0, 9.2),
 
-    carla.Location(-272.2, 19.1, 1.6),
-    carla.Location(-500.1, 97.7, 0.1),
-    carla.Location(-481.3, 342.1, 0.1),
-    carla.Location(-212.7, 422.1, 0.1),
-    carla.Location(14.9, 239.7, 0.1),
-    carla.Location(1.6, -75.8, 0.1),
-    carla.Location(39.0, -314.1, 0.1),
-    carla.Location(310.7, -352.9, 0.1),
-    carla.Location(395.0, -119.1, 0.1),
-    carla.Location(222.3, 22.1, 5.8),]
+    carla.Location(-276.9, 19.1, 1.4),
+    carla.Location(-500.6, 149.6, 0.1),
+    carla.Location(-365.3, 429.9, 0.1),
+    carla.Location(-94.0, 392.8, 0.1),
+    carla.Location(15.8, 179.7, 0.1),
+    carla.Location(1.3, -149.3, 0.1),
+    carla.Location(179.7, -365.0, 0.1),
+    carla.Location(383.0, -221.1, 0.1),
+    carla.Location(350.6, 9.7, 0.4),
+    carla.Location(71.0, 19.9, 11.1),
+    carla.Location(222.3, 22.1, 5.8),
+]
 
 class DistractorSpawner(AtomicCondition):
 

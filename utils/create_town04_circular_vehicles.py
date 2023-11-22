@@ -20,7 +20,7 @@ lines = input.readlines()
 current_distance = -1
 sx, sy, sz = 0, 0, 0
 
-lane_offset = LANE_WIDTH
+angle = 90 * math.pi / 180
 
 for line in lines:
     if len(line) > 0:
@@ -36,19 +36,16 @@ for line in lines:
                 
                 yaw = math.atan2(y - sy, x - sx)
                 
-                vx = x + lane_offset * math.sin(yaw)
-                vy = y + lane_offset * math.cos(yaw)
+                vx = x + LANE_WIDTH * math.cos(yaw + angle)
+                vy = y + LANE_WIDTH * math.sin(yaw + angle)
                 vz = z + 0.5
                 
                 yaw *= 180 / math.pi
                 
-                if yaw < -160:      # hmmm...
-                    yaw = 180
-                
                 print(f'{vx:.1f}\t{vy:.1f}\t{vz:.1f}')
                 output.write('{ ' + f'"x": "{vx:.1f}", "y": "{vy:.1f}", "z": "{vz:.1f}", "yaw": "{yaw:.1f}", "model": "vehicle.tesla.model3"' + ' },\n')
                 
-                lane_offset = -lane_offset
+                angle = -angle
         
         sx, sy, sz = x, y, z
 
