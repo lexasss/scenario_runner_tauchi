@@ -46,7 +46,15 @@ Set-Location .\scenario_runner
 $order = Get-Order
 if ($order -gt 0)
 {
-    python run_experiment.py --title changelane --route srunner/data/routes_town04_circular.xml srunner/data/scenario_changelane.json 0 --reloadWorld --waitForEgo --params=$order
+    python run_experiment.py `
+        --title changelane `
+        --route `
+            srunner/data/routes_town04_circular.xml `
+            srunner/data/scenario_changelane.json `
+            0 `
+        --reloadWorld `
+        --waitForEgo `
+        --params=$order
     
     Write-Host ""
     Write-Host "Done"

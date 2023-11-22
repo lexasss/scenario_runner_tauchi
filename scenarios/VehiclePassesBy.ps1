@@ -46,7 +46,15 @@ Set-Location .\scenario_runner
 $side = Get-Side
 if ($side -gt 0)
 {
-    python run_experiment.py --title vehiclepassesby --route srunner/data/routes_town04_circular.xml srunner/data/scenario_vehiclepassesby.json 1 --reloadWorld --waitForEgo --params=$side
+    python run_experiment.py `
+        --title vehiclepassesby `
+        --route `
+            srunner/data/routes_town04_circular.xml `
+            srunner/data/scenario_vehiclepassesby.json `
+            1 `
+        --reloadWorld `
+        --waitForEgo `
+        --params=$side
     
     Write-Host ""
     Write-Host "Done"

@@ -60,8 +60,6 @@ class VehiclePassesBy(BasicScenario):
 
         self.timeout = timeout
 
-        self._map = CarlaDataProvider.get_map()
-
         self._opponent_side = int(params) - 1
         
         self._ego_car = None                # carla.Vehicle

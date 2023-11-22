@@ -3,7 +3,7 @@
         {
             "Town04": [
                 {
-                    "scenario_type": "ChangeLane",
+                    "scenario_type": "EMirrors",
                     "available_event_configurations": [
                         {
                             "transform": {

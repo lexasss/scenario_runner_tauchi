@@ -34,6 +34,7 @@ from srunner.tools.py_trees_port import oneshot_behavior
 
 from srunner.scenarios.change_lane import ChangeLane
 from srunner.scenarios.vehicle_passes_by import VehiclePassesBy
+from srunner.scenarios.emirrors import EMirrors
 
 from srunner.scenariomanager.scenarioatomics.atomic_criteria import (CollisionTest,
                                                                      InRouteTest,
@@ -62,6 +63,7 @@ SECONDS_GIVEN_PER_METERS = 0.4
 NUMBER_CLASS_TRANSLATION = {
     "ChangeLane": ChangeLane,
     "VehiclePassesBy": VehiclePassesBy,
+    "EMirrors": EMirrors,
 }
 
 
