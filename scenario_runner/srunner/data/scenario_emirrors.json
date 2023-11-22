@@ -50,8 +50,7 @@
                                     { "x": "320.0", "y": "20.3", "z": "1.4", "yaw": "-179.0", "model": "vehicle.tesla.model3" },
                                     { "x": "239.8", "y": "12.9", "z": "5.2", "yaw": "-179.0", "model": "vehicle.tesla.model3" },
                                     { "x": "159.7", "y": "17.5", "z": "9.5", "yaw": "-179.0", "model": "vehicle.tesla.model3" },
-                                    { "x": "79.6", "y": "10.4", "z": "11.4", "yaw": "-179.8", "model": "vehicle.tesla.model3" },
-                                    { "x": "-0.6", "y": "16.1", "z": "11.4", "yaw": "-179.8", "model": "vehicle.tesla.model3" }
+                                    { "x": "79.6", "y": "10.4", "z": "11.4", "yaw": "-179.8", "model": "vehicle.tesla.model3" }
                                 ]
                             }
                         }

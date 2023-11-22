@@ -9,32 +9,6 @@ from srunner.scenariomanager.timer import GameTime
 
 from srunner.scenariomanager.scenarioatomics.atomic_behaviors import calculate_distance
 
-DISTRACTOR = 'trafficcone01'
-DISTRACTOR_LOCATIONS = [
-    carla.Location(-282.1, 6.1, 1.3),
-    carla.Location(-499.9, 93.2, 0.1),
-    carla.Location(-460.0, 375.8, 0.1),
-    carla.Location(-195.9, 422.0, 0.1),
-    carla.Location(1.7, 242.6, 0.1),
-    carla.Location(14.8, -39.0, 0.1),
-    carla.Location(30.8, -287.2, 0.1),
-    carla.Location(315.2, -362.6, 0.1),
-    carla.Location(382.0, -120.1, 0.1),
-    carla.Location(156.2, 8.0, 9.2),
-
-    carla.Location(-276.9, 19.1, 1.4),
-    carla.Location(-500.6, 149.6, 0.1),
-    carla.Location(-365.3, 429.9, 0.1),
-    carla.Location(-94.0, 392.8, 0.1),
-    carla.Location(15.8, 179.7, 0.1),
-    carla.Location(1.3, -149.3, 0.1),
-    carla.Location(179.7, -365.0, 0.1),
-    carla.Location(383.0, -221.1, 0.1),
-    carla.Location(350.6, 9.7, 0.4),
-    carla.Location(71.0, 19.9, 11.1),
-    carla.Location(222.3, 22.1, 5.8),
-]
-
 class DistractorSpawner(AtomicCondition):
 
     """
@@ -42,6 +16,8 @@ class DistractorSpawner(AtomicCondition):
 
     Important parameters:
     - actor: CARLA actor to execute the behavior
+    - type: distractor type, should be XXX in CARLA's static.prop.XXX
+    - location: list of carla.Location for the distractor to appear
     - name: Name of the condition
     - distance: Trigger distance between the actor and the spawning location in meters
     - duration: Distractor existance duration in seconds
@@ -51,8 +27,10 @@ class DistractorSpawner(AtomicCondition):
 
     def __init__(self,
                  actor,
-                 distance=100,
-                 duration=1,
+                 type,
+                 locations,
+                 distance=100.0,
+                 duration=1.0,
                  comparison_operator=operator.lt,
                  name="DistractorSpawner"):
         """
@@ -62,6 +40,8 @@ class DistractorSpawner(AtomicCondition):
         self.logger.debug("%s.__init__()" % (self.__class__.__name__))
 
         self._actor = actor
+        self._distractor_type = f'static.prop.{type}'
+        self._distractor_locations = locations
         self._distance = distance
         self._duration = duration
         self._comparison_operator = comparison_operator
@@ -71,7 +51,7 @@ class DistractorSpawner(AtomicCondition):
         self._distractor = None
         self._distractor_index = 0
         self._distractor_creation_time = 0
-        self._distractor_location = DISTRACTOR_LOCATIONS[self._distractor_index]
+        self._distractor_location = self._distractor_locations[self._distractor_index]
 
         print(f'DISTRACTOR: distance={self._distance}, duration={self._duration}')
 
@@ -100,7 +80,7 @@ class DistractorSpawner(AtomicCondition):
         if (self._distractor is not None):
             self._distractor.destroy()
             self._distractor = None
-            print(f'DISTRACTOR: {DISTRACTOR} removed at {GameTime.get_time()}')
+            print(f'DISTRACTOR: {self._distractor_type} removed at {GameTime.get_time()}')
 
     def _create_distractor(self):
 
@@ -108,17 +88,17 @@ class DistractorSpawner(AtomicCondition):
 
         try:
             transform = carla.Transform(self._distractor_location, carla.Rotation())
-            bp = self._world.get_blueprint_library().find(f'static.prop.{DISTRACTOR}')
+            bp = self._world.get_blueprint_library().find(self._distractor_type)
             distractor = self._world.spawn_actor(bp, transform) if bp is not None else None
             if distractor is not None:
                 self._distractor = distractor
                 self._distractor_creation_time = GameTime.get_time()
-                print(f'DISTRACTOR: {DISTRACTOR} created at {self._distractor_location} / {self._distractor_creation_time}')
+                print(f'DISTRACTOR: {self._distractor_type} created at {self._distractor_location} / {self._distractor_creation_time}')
         except:
-            print(f'DISTRACTOR: Cannot create {DISTRACTOR} at {self._distractor_location}')
+            print(f'DISTRACTOR: Cannot create {self._distractor_type} at {self._distractor_location}')
         finally:
             self._distractor_index += 1
-            if self._distractor_index == len(DISTRACTOR_LOCATIONS):
+            if self._distractor_index == len(self._distractor_locations):
                 self._distractor_index = 0
-            self._distractor_location = DISTRACTOR_LOCATIONS[self._distractor_index]
+            self._distractor_location = self._distractor_locations[self._distractor_index]
         

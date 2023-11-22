@@ -31,6 +31,31 @@ from srunner.scenariomanager.scenarioatomics.atomic_trigger_conditions import In
 from srunner.scenariomanager.scenarioatomics.custom_trigger_conditions import DistractorSpawner
 from srunner.scenarios.basic_scenario import BasicScenario
 
+DISTRACTOR = 'trafficcone01'
+DISTRACTOR_LOCATIONS = [
+    carla.Location(-282.1, 6.1, 1.3),
+    carla.Location(-489.5, 35.2, 0.1),
+    carla.Location(-460.0, 375.8, 0.1),
+    carla.Location(-195.9, 422.0, 0.1),
+    carla.Location(1.7, 242.6, 0.1),
+    carla.Location(14.8, -39.0, 0.1),
+    carla.Location(30.8, -287.2, 0.1),
+    carla.Location(315.2, -362.6, 0.1),
+    carla.Location(382.0, -120.1, 0.1),
+    carla.Location(156.2, 8.0, 9.2),
+
+    carla.Location(-276.9, 19.1, 1.4),
+    carla.Location(-501.2, 199.6, 0.1),
+    carla.Location(-365.3, 429.9, 0.1),
+    carla.Location(-94.0, 392.8, 0.1),
+    carla.Location(15.8, 179.7, 0.1),
+    carla.Location(1.3, -149.3, 0.1),
+    carla.Location(179.7, -365.0, 0.1),
+    carla.Location(383.0, -221.1, 0.1),
+    carla.Location(375.6, 10.7, 0.1),
+    carla.Location(71.0, 19.9, 11.1),
+]
+
 class EMirrors(BasicScenario):
 
     """
@@ -173,7 +198,12 @@ class EMirrors(BasicScenario):
             root.add_child(other_car_sequence)
 
         distractor_sequence = Sequence("Distractor")
-        distractor_sequence.add_child(DistractorSpawner(self._ego_car, distance=150, duration=3))
+        distractor_sequence.add_child(DistractorSpawner(
+            self._ego_car,
+            DISTRACTOR,
+            DISTRACTOR_LOCATIONS,
+            distance=200,
+            duration=7.5))
 
         # Populate the root sequence
         root.add_child(ego_car_sequence)
