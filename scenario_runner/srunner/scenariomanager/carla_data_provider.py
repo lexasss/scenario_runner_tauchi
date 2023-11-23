@@ -19,7 +19,7 @@ from six import iteritems
 
 import carla
 
-from typing import Optional, List, Any, Tuple, Dict, Iterator
+from typing import Optional, List, Any, Tuple, Dict, Iterator, cast
 
 def calculate_velocity(actor: carla.Actor) -> float:
     """
@@ -47,17 +47,17 @@ class CarlaDataProvider(object):  # pylint: disable=too-many-public-methods
     In addition it provides access to the map and the transform of all traffic lights
     """
 
-    _actor_velocity_map = {}
-    _actor_location_map = {}
-    _actor_transform_map = {}
-    _traffic_light_map = {}
-    _carla_actor_pool = {}
-    _global_osc_parameters = {}
+    _actor_velocity_map: Dict[carla.Actor, float] = {}
+    _actor_location_map: Dict[carla.Actor, Optional[carla.Location]] = {}
+    _actor_transform_map: Dict[carla.Actor, Optional[carla.Transform]] = {}
+    _traffic_light_map: Dict[carla.TrafficLight, carla.Transform] = {}
+    _carla_actor_pool: Dict[int, Optional[carla.Actor]] = {}
+    _global_osc_parameters: Any = {}
     _client: Optional[carla.Client] = None
     _world: Optional[carla.World] = None
     _map = None
     _sync_flag = False
-    _spawn_points: Optional[List[int]] = None
+    _spawn_points: List[carla.Transform] = []
     _spawn_index = 0
     _blueprint_library = None
     _ego_vehicle_route = None
@@ -255,7 +255,8 @@ class CarlaDataProvider(object):  # pylint: disable=too-many-public-methods
 
         # Parse all traffic lights
         CarlaDataProvider._traffic_light_map.clear()
-        for traffic_light in CarlaDataProvider._world.get_actors().filter('*traffic_light*'):
+        for actor in CarlaDataProvider._world.get_actors().filter('*traffic_light*'):
+            traffic_light = cast(carla.TrafficLight, actor)
             if traffic_light not in CarlaDataProvider._traffic_light_map.keys():
                 CarlaDataProvider._traffic_light_map[traffic_light] = traffic_light.get_transform()
             else:
@@ -388,7 +389,7 @@ class CarlaDataProvider(object):  # pylint: disable=too-many-public-methods
         waypoint = CarlaDataProvider.get_map().get_waypoint(location)
         # Create list of all waypoints until next intersection
         list_of_waypoints = []
-        while waypoint and not waypoint.is_intersection:
+        while waypoint and not waypoint.is_junction:
             list_of_waypoints.append(waypoint)
             waypoint = waypoint.next(2.0)[0]
 
@@ -403,7 +404,7 @@ class CarlaDataProvider(object):  # pylint: disable=too-many-public-methods
             if hasattr(traffic_light, 'trigger_volume'):
                 tl_t = CarlaDataProvider._traffic_light_map[traffic_light]
                 transformed_tv = tl_t.transform(traffic_light.trigger_volume.location)
-                distance = carla.Location(transformed_tv).distance(list_of_waypoints[-1].transform.location)
+                distance = transformed_tv.distance(list_of_waypoints[-1].transform.location)
 
                 if distance < distance_to_relevant_traffic_light:
                     relevant_traffic_light = traffic_light
@@ -462,9 +463,11 @@ class CarlaDataProvider(object):  # pylint: disable=too-many-public-methods
             'pedestrian': 'walker.pedestrian.0001',
         }
 
+        bplib = CarlaDataProvider._blueprint_library
+
         # Set the model
         try:
-            blueprints = CarlaDataProvider._blueprint_library.filter(model)
+            blueprints = bplib.filter(model) if bplib is not None else []
             blueprints_ = []
             if safe:
                 for bp in blueprints:
@@ -484,7 +487,7 @@ class CarlaDataProvider(object):  # pylint: disable=too-many-public-methods
             if new_model != '':
                 bp_filter = new_model
             print("WARNING: Actor model {} not available. Using instead {}".format(model, new_model))
-            blueprint = CarlaDataProvider._rng.choice(CarlaDataProvider._blueprint_library.filter(bp_filter))
+            blueprint = CarlaDataProvider._rng.choice(bplib.filter(bp_filter) if bplib is not None else [])
 
         # Set the color
         if color:
@@ -590,7 +593,8 @@ class CarlaDataProvider(object):  # pylint: disable=too-many-public-methods
         # De/activate the autopilot of the actor if it belongs to vehicle
         if autopilot:
             if actor.type_id.startswith('vehicle.'):
-                actor.set_autopilot(autopilot, CarlaDataProvider._traffic_manager_port)
+                vehicle = cast(carla.Vehicle, actor)
+                vehicle.set_autopilot(autopilot, CarlaDataProvider._traffic_manager_port)
             else:
                 print("WARNING: Tried to set the autopilot of a non vehicle actor")
 
@@ -653,7 +657,7 @@ class CarlaDataProvider(object):  # pylint: disable=too-many-public-methods
                 if blueprint.has_tag('walker'):
                     # On imported OpenDRIVE maps, spawning of pedestrians can fail.
                     # By increasing the z-value the chances of success are increased.
-                    map_name = CarlaDataProvider._map.name.split("/")[-1]
+                    map_name = CarlaDataProvider._map.name.split("/")[-1] if CarlaDataProvider._map is not None else ""
                     if not map_name.startswith('OpenDrive'):
                         _spawn_point.location.z = transform.location.z + 0.2
                     else:
@@ -743,7 +747,7 @@ class CarlaDataProvider(object):  # pylint: disable=too-many-public-methods
         return actors
 
     @staticmethod
-    def get_actors() -> Iterator[Tuple[int, carla.Actor]]:
+    def get_actors() -> Iterator[Tuple[int, Optional[carla.Actor]]]:
         """
         Return list of actors and their ids
 
@@ -767,7 +771,8 @@ class CarlaDataProvider(object):  # pylint: disable=too-many-public-methods
         Get the actor object of the hero actor if it exists, returns none otherwise.
         """
         for actor_id in CarlaDataProvider._carla_actor_pool:
-            if CarlaDataProvider._carla_actor_pool[actor_id].attributes['role_name'] == 'hero':
+            actor = CarlaDataProvider._carla_actor_pool[actor_id]
+            if actor is not None and actor.attributes['role_name'] == 'hero':
                 return CarlaDataProvider._carla_actor_pool[actor_id]
         return None
 
@@ -789,7 +794,9 @@ class CarlaDataProvider(object):  # pylint: disable=too-many-public-methods
         Remove an actor from the pool using its ID
         """
         if actor_id in CarlaDataProvider._carla_actor_pool:
-            CarlaDataProvider._carla_actor_pool[actor_id].destroy()
+            actor = CarlaDataProvider._carla_actor_pool[actor_id]
+            if actor is not None:
+                actor.destroy()
             CarlaDataProvider._carla_actor_pool[actor_id] = None
             CarlaDataProvider._carla_actor_pool.pop(actor_id)
         else:
@@ -802,8 +809,9 @@ class CarlaDataProvider(object):  # pylint: disable=too-many-public-methods
         provided location
         """
         for actor_id in CarlaDataProvider._carla_actor_pool.copy():
-            if CarlaDataProvider._carla_actor_pool[actor_id].get_location().distance(location) < distance:
-                CarlaDataProvider._carla_actor_pool[actor_id].destroy()
+            actor = CarlaDataProvider._carla_actor_pool[actor_id]
+            if actor is not None and actor.get_location().distance(location) < distance:
+                actor.destroy()
                 CarlaDataProvider._carla_actor_pool.pop(actor_id)
 
         # Remove all keys with None values
@@ -856,6 +864,6 @@ class CarlaDataProvider(object):  # pylint: disable=too-many-public-methods
         CarlaDataProvider._ego_vehicle_route = None
         CarlaDataProvider._carla_actor_pool = {}
         CarlaDataProvider._client = None
-        CarlaDataProvider._spawn_points = None
+        CarlaDataProvider._spawn_points = []
         CarlaDataProvider._spawn_index = 0
         CarlaDataProvider._rng = random.RandomState(CarlaDataProvider._random_seed)
