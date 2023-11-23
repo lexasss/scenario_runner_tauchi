@@ -16,7 +16,6 @@ and another runs behind it for some time. The this car accelerates and passes by
 import carla
 import operator
 
-
 from py_trees.composites import (Parallel, Sequence)
 from py_trees.common import ParallelPolicy
 

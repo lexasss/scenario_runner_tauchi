@@ -19,6 +19,9 @@ from six import iteritems
 
 import carla
 
+# import sys
+# sys.path.append('..\\')
+# from typings.carla_provider import CarlaDataProvider as Base
 
 def calculate_velocity(actor):
     """
