@@ -3,6 +3,8 @@ from typing import Callable, Optional, List, Set, Any, Tuple, Union, Iterator
 
 import carla_command
 
+command: Any
+
 class Actor:
     attributes: dict[str,Any]
     id: int
@@ -604,7 +606,9 @@ class TrafficSign(Actor):
 class Transform:
     location: Location
     rotation: Rotation
-    def __init__(self, location: Location, rotation: Rotation) -> None: ...
+    def __init__(self,
+                 location: Location = Location(),
+                 rotation: Rotation = Rotation()) -> None: ...
     def transform(self, in_point: Location) -> Location: ...
     def get_forward_vector(self) -> Vector3D: ...
     def get_inverse_matrix(self) -> List[List[float]]: ...
