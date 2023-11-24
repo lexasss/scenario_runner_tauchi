@@ -135,9 +135,9 @@ class VehicleFollower(WaypointFollower):
     - delta_velocity: max additional velocity to speed up
     """
 
-    def __init__(self, actor, other_actor, distance_between,
+    def __init__(self, actor: carla.Actor, other_actor: carla.Actor, distance_between: float,
                  duration=float("inf"), 
-                 delta_velocity=10,
+                 delta_velocity=10.0,
                  name="VehicleFollower"):
         """
         Setup parameters
@@ -163,6 +163,9 @@ class VehicleFollower(WaypointFollower):
 
         actor_location = CarlaDataProvider.get_location(self._actor)
         other_location = CarlaDataProvider.get_location(self._other_actor)
+        
+        if actor_location is None or other_location is None:
+            return
 
         if self._prev_location is not None:
             # The Actor is behind the Other when the dot product

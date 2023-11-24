@@ -16,6 +16,8 @@ and another runs behind it for some time. The this car accelerates and passes by
 import carla
 import operator
 
+from typing import cast
+
 from py_trees.composites import (Parallel, Sequence)
 from py_trees.common import ParallelPolicy
 
@@ -112,7 +114,8 @@ class EMirrors(BasicScenario):
         # add actors from JSON file
         for actor in config.other_actors:
             
-            vehicle = CarlaDataProvider.request_new_actor(actor.model, actor.transform)
+            actor_ = CarlaDataProvider.request_new_actor(actor.model, actor.transform)
+            vehicle = cast(carla.Vehicle, actor_)
             vehicle.set_simulate_physics(enabled=False)
             self.other_actors.append(vehicle)
 
