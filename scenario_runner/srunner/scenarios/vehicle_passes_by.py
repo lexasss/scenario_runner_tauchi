@@ -14,7 +14,9 @@ and another runs behind it for some time. The this car accelerates and passes by
 """
 
 import operator
+import carla
 
+from typing import cast, Optional, List, Tuple
 
 from py_trees.composites import (Parallel, Sequence)
 from py_trees.common import ParallelPolicy
@@ -28,7 +30,6 @@ from srunner.scenariomanager.scenarioatomics.custom_behaviors import (DebugPrint
                                                                       VehicleFollower)
 from srunner.scenariomanager.scenarioatomics.atomic_trigger_conditions import InTriggerDistanceToVehicle
 from srunner.scenarios.basic_scenario import BasicScenario
-from srunner.tools.scenario_helper import get_waypoint_in_distance
 
 class VehiclePassesBy(BasicScenario):
 
@@ -38,8 +39,9 @@ class VehiclePassesBy(BasicScenario):
     another (Opponent) car behind. The Opponen will accelerate after some time and pass by the ego car.
     """
 
-    OPPONENT_SIDE_LEFT = 0
-    OPPONENT_SIDE_RIGHT = 1
+    OPPONENT_SIDE_NONE = 0
+    OPPONENT_SIDE_LEFT = 1
+    OPPONENT_SIDE_RIGHT = 2
 
     DISTANCE_BETWEEN_CARS = 50              # meters
     DISTANCE_TO_APPROACH = 10               # meters
@@ -62,10 +64,10 @@ class VehiclePassesBy(BasicScenario):
 
         self._opponent_side = int(params) - 1
         
-        self._ego_car = None                # carla.Vehicle
-        self._opponent = None               # carla.Vehicle
-        self._opponent_transform = None     # carla.Transform
-        self._other_cars = []               # [(carla.Vehicle, carla.Transform)]
+        self._ego_car: Optional[carla.Vehicle] = None
+        self._opponent: Optional[carla.Vehicle] = None
+        self._opponent_transform: Optional[carla.Transform] = None
+        self._other_cars: List[Tuple[carla.Vehicle, carla.Transform]] = []
 
         super(VehiclePassesBy, self).__init__("VehiclePassesBy",
             ego_vehicles,
@@ -93,7 +95,8 @@ class VehiclePassesBy(BasicScenario):
         # add actors from JSON file
         for actor in config.other_actors:
             
-            vehicle = CarlaDataProvider.request_new_actor(actor.model, actor.transform)
+            actor_ = CarlaDataProvider.request_new_actor(actor.model, actor.transform)
+            vehicle = cast(carla.Vehicle, actor_)
             vehicle.set_simulate_physics(enabled=False)
             self.other_actors.append(vehicle)
 
@@ -124,44 +127,52 @@ class VehiclePassesBy(BasicScenario):
         ego_car_sequence.add_child(self._follow_waypoints(
             self._ego_car, "Ego",
             VehiclePassesBy.VELOCITY_MAIN))
+        
+        root.add_child(ego_car_sequence)
             
         # Opponent
-        opponent_sequence = Sequence("Opponent")
-        opponent_sequence.add_child(ActorTransformSetter(
-            self._opponent,
-            self._opponent_transform,
-            name="Opponent_Placement"))
-        opponent_sequence.add_child(ChangeAutoPilot(
-            self._opponent,
-            activate=True,
-            name="Opponent_AutoPilot",
-            parameters={
-                "auto_lane_change": False
-            }))
-        opponent_sequence.add_child(DebugPrint(self._opponent, "== STAGE 1 - driving behind =="))
+        if self._opponent is not None:
+            opponent_sequence = Sequence("Opponent")
+            opponent_sequence.add_child(ActorTransformSetter(
+                self._opponent,
+                self._opponent_transform,
+                name="Opponent_Placement"))
+            opponent_sequence.add_child(ChangeAutoPilot(
+                self._opponent,
+                activate=True,
+                name="Opponent_AutoPilot",
+                parameters={
+                    "auto_lane_change": False
+                }))
+            opponent_sequence.add_child(DebugPrint(self._opponent, "== STAGE 1 - driving behind =="))
 
-        opponent_sequence.add_child(VehicleFollower(
-            self._opponent,
-            self._ego_car,
-            VehiclePassesBy.DISTANCE_BETWEEN_CARS,
-            VehiclePassesBy.DURATION_DRIVING_BEHIND,
-            name=f"Opponent_VehicleFollower"))
-        opponent_sequence.add_child(DebugPrint(self._opponent, "== STAGE 2 - approaching =="))
-        opponent_sequence.add_child(self._drive_until_close(
-            self._opponent, "Opponent",
-            self._ego_car,
-            VehiclePassesBy.DISTANCE_TO_APPROACH,
-            VehiclePassesBy.VELOCITY_MAIN + VehiclePassesBy.VELOCITY_PASSING_BY))
-        opponent_sequence.add_child(DebugPrint(self._opponent, "== STAGE 3 - passing by =="))
-        opponent_sequence.add_child(self._drive_until_far(
-            self._opponent, "Opponent",
-            self._ego_car,
-            VehiclePassesBy.DISTANCE_TO_OPPONENT_WHEN_FINISHED,
-            VehiclePassesBy.VELOCITY_MAIN + VehiclePassesBy.VELOCITY_PASSING_BY))
-        opponent_sequence.add_child(DebugPrint(self._opponent, "== STAGE 2 - done =="))
+            opponent_sequence.add_child(VehicleFollower(
+                self._opponent,
+                self._ego_car,
+                VehiclePassesBy.DISTANCE_BETWEEN_CARS,
+                VehiclePassesBy.DURATION_DRIVING_BEHIND,
+                name=f"Opponent_VehicleFollower"))
+            opponent_sequence.add_child(DebugPrint(self._opponent, "== STAGE 2 - approaching =="))
+            opponent_sequence.add_child(self._drive_until_close(
+                self._opponent, "Opponent",
+                self._ego_car,
+                VehiclePassesBy.DISTANCE_TO_APPROACH,
+                VehiclePassesBy.VELOCITY_MAIN + VehiclePassesBy.VELOCITY_PASSING_BY))
+            opponent_sequence.add_child(DebugPrint(self._opponent, "== STAGE 3 - passing by =="))
+            opponent_sequence.add_child(self._drive_until_far(
+                self._opponent, "Opponent",
+                self._ego_car,
+                VehiclePassesBy.DISTANCE_TO_OPPONENT_WHEN_FINISHED,
+                VehiclePassesBy.VELOCITY_MAIN + VehiclePassesBy.VELOCITY_PASSING_BY))
+            opponent_sequence.add_child(DebugPrint(self._opponent, "== STAGE 2 - done =="))
+    
+            root.add_child(opponent_sequence)
 
         # Other cars
         i = 1
+        duration = float("inf") \
+            if self._opponent is not None else \
+            VehiclePassesBy.DURATION_DRIVING_BEHIND + 23
         for other_car, other_car_transform in self._other_cars:
             other_car_sequence = Sequence(f"OtherCar{i}")
             other_car_sequence.add_child(ActorTransformSetter(
@@ -179,13 +190,10 @@ class VehiclePassesBy(BasicScenario):
                 other_car,
                 self._ego_car,
                 VehiclePassesBy.DISTANCE_BETWEEN_CARS,
+                duration,
                 name=f"OtherCar{i}_VehicleFollower"))
             root.add_child(other_car_sequence)
 
-        # Populate the root sequence
-        root.add_child(ego_car_sequence)
-        root.add_child(opponent_sequence)
-        
         return root
 
     # override

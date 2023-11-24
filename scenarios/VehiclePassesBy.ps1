@@ -7,9 +7,9 @@
 
 function Get-Side
 {
-    [string[]]$sides = 'Left', 'Right'
+    [string[]]$sides = 'None', 'Left', 'Right'
 
-    Write-Host "The vehicle passes by the ego var on the"
+    Write-Host "The side another vehicle passes by the ego car:"
     Write-Host ""
 
     For ($i=0; $i -lt $sides.Count; $i++)
