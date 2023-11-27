@@ -25,7 +25,8 @@ from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (ActorTrans
                                                                       WaypointFollower,
                                                                       Idle,
                                                                       ChangeAutoPilot)
-from srunner.scenariomanager.scenarioatomics.custom_behaviors import (DebugPrint,
+from srunner.scenariomanager.scenarioatomics.custom_behaviors import (print_debug,
+                                                                      DebugPrint,
                                                                       VehicleLightsControls,
                                                                       WaitForEvent,
                                                                       VehicleFollower)
@@ -96,7 +97,7 @@ class ChangeLane(BasicScenario):
         Setup all relevant parameters and create scenario
         """
 
-        self.timeout = timeout
+        self.timeout = 60*30     # rewrite any other value with a half of hour
 
         self._laneChangeOrder = int(params)
         self._map = CarlaDataProvider.get_map()
@@ -208,6 +209,10 @@ class ChangeLane(BasicScenario):
         ego_car_sequence.add_child(self._session_change_lane_EGO_CAR(
             self._opponents[1][0],
             until_event=ChangeLane.EVENT_SESSION_3_ENDS))
+
+        ego_car_sequence.add_child(DebugPrint(self._ego_car,
+            "== FINISHED =="))
+        
         opponent_sequences[0].add_child(self._drive_straight_TESLA(
             self._opponents[0][0], "Opponent1",
             ChangeLane.MAIN_VELOCITY,
@@ -241,14 +246,6 @@ class ChangeLane(BasicScenario):
             carID += 1
         
         return root
-
-    '''
-    def _setup_scenario_end(self, config):
-        """
-        Overrides the default condition that requires to end the route before finishing the scenario
-        """
-        return None
-    '''
 
     # override
     def _create_test_criteria(self):

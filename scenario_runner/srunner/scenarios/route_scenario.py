@@ -58,7 +58,7 @@ class DebugMsg(AtomicBehavior):
         print(f'[CHECKPOINT]: {self.name}')
         return py_trees.common.Status.SUCCESS
 
-SECONDS_GIVEN_PER_METERS = 0.4
+SECONDS_GIVEN_PER_METERS = 0.6
 
 NUMBER_CLASS_TRANSLATION = {
     "ChangeLane": ChangeLane,
