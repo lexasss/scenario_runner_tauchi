@@ -12,7 +12,7 @@ from srunner.scenariomanager.scenarioatomics.atomic_behaviors import calculate_d
 class DistractorSpawner(AtomicCondition):
 
     """
-    This class implemented an endless the trigger (condition) that spaws distractors
+    This class implementes the trigger (condition) that spaws distractors
 
     Important parameters:
     - actor: CARLA actor to execute the behavior
@@ -21,8 +21,10 @@ class DistractorSpawner(AtomicCondition):
     - name: Name of the condition
     - distance: Trigger distance between the actor and the spawning location in meters
     - duration: Distractor existance duration in seconds
+    - loop: if 'True' (default), then the spawning restarts from the beginning of the list of locations upon reaching the end
 
-    The condition will never be terminated with SUCCESS
+    The condition will be terminated with SUCCESS if loop=False after the distractor is removed from the last location,
+    otherwise the 'update' function always returns RUNNING
     """
 
     def __init__(self,
@@ -31,6 +33,7 @@ class DistractorSpawner(AtomicCondition):
                  locations,
                  distance=100.0,
                  duration=1.0,
+                 loop=True,
                  comparison_operator=operator.lt,
                  name="DistractorSpawner"):
         """
@@ -45,6 +48,7 @@ class DistractorSpawner(AtomicCondition):
         self._distance = distance
         self._duration = duration
         self._comparison_operator = comparison_operator
+        self._loop = loop
 
         self._world = CarlaDataProvider.get_world()
 
@@ -63,6 +67,8 @@ class DistractorSpawner(AtomicCondition):
         if self._distractor is not None:
             if (GameTime.get_time() - self._distractor_creation_time) > self._duration:
                 self._remove_distractor()
+                if not self._loop and self._distractor_index == 0:
+                    return BehaviourStatus.SUCCESS
 
         location = CarlaDataProvider.get_location(self._actor)
 
