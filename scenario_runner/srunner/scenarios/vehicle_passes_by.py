@@ -91,7 +91,7 @@ class VehiclePassesBy(BasicScenario):
         # add actors from JSON file
         for actor in config.other_actors:
             
-            actor_ = CarlaDataProvider.request_new_actor(actor.model, actor.transform)
+            actor_ = CarlaDataProvider.request_new_actor(actor.model, actor.transform, color=actor.color)
             vehicle = cast(carla.Vehicle, actor_)
             vehicle.set_simulate_physics(enabled=False)
             self.other_actors.append(vehicle)

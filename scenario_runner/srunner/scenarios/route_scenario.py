@@ -88,6 +88,8 @@ def convert_json_to_actor(actor_dict):
     
     if 'model' in actor_dict:
         node.set('model', actor_dict['model'])
+    if 'color' in actor_dict:
+        node.set('color', actor_dict['color'])
 
     return ActorConfigurationData.parse_from_node(node, 'simulation')
 
