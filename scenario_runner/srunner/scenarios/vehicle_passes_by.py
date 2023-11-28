@@ -50,10 +50,8 @@ class VehiclePassesBy(BasicScenario):
     DURATION_DRIVING_BEHIND = 50            # seconds
 
     VELOCITY_MAIN = 25.0                    # m/s
-    VELOCITY_PASSING_BY = 5                 # m/s
+    VELOCITY_PASSING_BY = 5.0               # m/s
     
-    MAX_SPAWN_DISTANCE_FROM_REFERENCE = 5   # meters
-
     def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
                  timeout=600, params=""):
         """
@@ -64,7 +62,7 @@ class VehiclePassesBy(BasicScenario):
 
         self._opponent_side = int(params) - 1
         
-        self._ego_car: Optional[carla.Vehicle] = None
+        self._ego_car: carla.Vehicle = ego_vehicles[0]
         self._opponent: Optional[carla.Vehicle] = None
         self._opponent_transform: Optional[carla.Transform] = None
         self._other_cars: List[Tuple[carla.Vehicle, carla.Transform]] = []
@@ -89,8 +87,6 @@ class VehiclePassesBy(BasicScenario):
 
     # override
     def _initialize_actors(self, config):
-
-        self._ego_car = self.ego_vehicles[0]
 
         # add actors from JSON file
         for actor in config.other_actors:

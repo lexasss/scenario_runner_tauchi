@@ -14,8 +14,8 @@
                             },
                             "other_actors": {
                                 "front": [
-                                    { "x": "-100", "y": "9.8", "z": "10", "yaw": "180", "model": "vehicle.tesla.model3" },
-                                    { "x": "-100", "y": "15.8", "z": "10", "yaw": "180", "model": "vehicle.tesla.model3" }
+                                    { "x": "-100", "y": "9.8", "z": "10", "yaw": "180", "model": "vehicle.tesla.model3", "color": "17,37,103" },
+                                    { "x": "-100", "y": "15.8", "z": "10", "yaw": "180", "model": "vehicle.tesla.model3", "color": "17,37,103" }
                                 ]
                             }
                         }
