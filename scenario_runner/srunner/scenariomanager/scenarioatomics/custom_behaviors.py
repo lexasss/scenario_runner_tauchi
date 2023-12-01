@@ -1,7 +1,5 @@
 import carla
 import math
-import operator
-import py_trees
 
 from datetime import datetime
 
@@ -11,8 +9,8 @@ from py_trees.common import (Status as BehaviourStatus)
 
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (calculate_distance,
-                                                                     WaypointFollower,
-                                                                     AtomicBehavior)
+                                                                      WaypointFollower,
+                                                                      AtomicBehavior)
 from srunner.scenariomanager.timer import (GameTime, TimeOut)
 
 def print_debug(message):
@@ -221,6 +219,10 @@ class VehicleFollower(WaypointFollower):
 
         return new_status
 
+CROSS_X = 9
+CROSS_Y = 17
+CROSS_SIZE = 100
+
 class ApproachFromBehind(AtomicBehavior):
     """
     A class to implement the EMirror stury behaviour
@@ -265,17 +267,16 @@ class ApproachFromBehind(AtomicBehavior):
             
             (closest_car, closest_car_dist) = self._get_closest_car_behind()
             if closest_car is None:
-                print('AFTER PAUSE: No cars behind')
                 return BehaviourStatus.RUNNING
 
             # we may have a car that is closer than needed
             if closest_car_dist < self._distance:
-                print('AFTER PAUSE: Some cars are too close. Waiting...')
+                print(f'AFTER PAUSE: Some cars are too close ({closest_car_dist:.1f} m). Waiting...')
                 return BehaviourStatus.RUNNING
             
             # here we found that car: it is behind the ego car and is located further than the target distance.
             
-            print(f'AFTER PAUSE: set an appoaching car {closest_car_dist:.1} meters behind')
+            print(f'AFTER PAUSE: set an appoaching car {closest_car_dist:.1f} meters behind')
             self._approaching_car = closest_car
 
         else:
@@ -287,8 +288,10 @@ class ApproachFromBehind(AtomicBehavior):
             dist = calculate_distance(car_loc, ego_loc)
             if dist < self._distance:
                 # the approaching car is close enough, let finish this behaviour
-                print(f'APPROACHING CAR: close enough')
+                print('APPROACHING: the car is close enough')
                 return BehaviourStatus.SUCCESS
+            else:
+                print(f'APPROACHING: {dist:.1f}')
 
             # still too far away... lets continue running
             # hidden_transform = carla.Transform(carla.Location(250, -200, 10))
@@ -311,39 +314,68 @@ class ApproachFromBehind(AtomicBehavior):
     def _get_closest_car_behind(self):
         ego_transform = CarlaDataProvider.get_transform(self._actor)
         if ego_transform is None:
+            print('AFTER PAUSE: No ego car')
             return (None, 0)
         
         ego_loc = ego_transform.location
         
         # avoid the locations close to the cross
-        if math.sqrt((ego_loc.x - 9)**2 + (ego_loc.y - 17)**2) < 50:
+        if math.sqrt((ego_loc.x - CROSS_X)**2 + (ego_loc.y - CROSS_Y)**2) < CROSS_SIZE:
+            print('AFTER PAUSE: Passing the cross')
             return (None, 0)
         
-        # find closes car running behind
-        ego_rot = ego_transform.rotation
+        # find the closest car running behind
+        ego_yaw = ego_transform.rotation.yaw * math.pi / 180
+        print(f'AFTER PAUSE: ego car yaw {ego_yaw*180/math.pi:.1f}')
+
         closest_dist = float("inf")
         closest_car: Optional[carla.Vehicle] = None
         
         for car in self._other_cars:
-            car_loc = CarlaDataProvider.get_location(car)
-            if car_loc is None:
+            car_transform = CarlaDataProvider.get_transform(car)
+            if car_transform is None:
                 continue
             
+            car_loc = car_transform.location
             dx = ego_loc.x - car_loc.x
-            dy = ego_loc.y - car_loc.x
+            dy = ego_loc.y - car_loc.y
             angle = math.atan2(dy, dx)
-            angle_diff = angle - ego_rot.yaw
             
-            # if the car is running behind the egocar, then their egocar's 'yaw' value differs from
-            # the the angle of car->egocar vector no more than 90 degrees,
-            # and therefore cos of this difference is >0
-            
-            if math.cos(angle_diff) < 0:
+            # if the car is running behind the egocar, then egocar's 'yaw' value differs from
+            # the angle of car->egocar vector no more than 70 degrees,
+            # and therefore cos of this difference is > 0.2
+
+            angle_diff = angle - ego_yaw
+            if math.cos(angle_diff) < 0.2:
                 continue
             
             dist = calculate_distance(car_loc, ego_loc)
             if dist < closest_dist:
                 closest_dist = dist
                 closest_car = car
-        
+                print(f'AFTER PAUSE: considering car at {dx:.1f}, {dy:.1f}, angle {angle*180/math.pi:.1f}')
+
+        if closest_car is None:
+            print('AFTER PAUSE: hmm...')
+        else:
+            print(f'AFTER PAUSE: selected car at the distance {closest_dist:.1f}')
+                  
         return (closest_car, closest_dist)
+    
+class StopVehicleImmediately(AtomicBehavior):
+    """
+    Sets the vehicle target velocity
+
+    Important parameters:
+    - actor: the vehicle
+    """
+
+    def __init__(self, actor, name="StopVehicleImmediately"):
+        self._actor: carla.Vehicle
+        super(StopVehicleImmediately, self).__init__(name, actor)
+        self.logger.debug("%s.__init__()" % (self.__class__.__name__))
+
+    def update(self):
+        self._actor.set_target_velocity(carla.Vector3D())
+        return BehaviourStatus.SUCCESS
+

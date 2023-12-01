@@ -137,17 +137,6 @@ class ScenarioManager(object):
             world = CarlaDataProvider.get_world()
             if world:
                 snapshot = world.get_snapshot()
-                
-                # TAUCHI - print out the ego car coordinates and rotation
-                # egocars = world.get_actors().filter("vehicle.dreyevr.egovehicle")
-                # if len(egocars) > 0:
-                #     egocar = egocars[0]
-                #     egocar_snapshot = snapshot.find(egocar.id)
-                #     if egocar_snapshot is not None:
-                #         transform = egocar_snapshot.get_transform()
-                #         print('==== EGOCAR ==== ', transform.location, transform.rotation)
-                # TAUCHI END
-                
                 if snapshot:
                     timestamp = snapshot.timestamp
             if timestamp:

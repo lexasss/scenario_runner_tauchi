@@ -9,12 +9,15 @@
 """
 Change lane scenario:
 
-The scenario realizes a driving behavior, in which the user-controlled ego vehicle follows a car on the highway.
-There're many other cars on the road but only two are able to change their lane (these cars are called as 'Opponents').
-At one point the opponent car changes its lane; one the opponents does it at a safe distance, and the other provokes a collision.
+The scenario realizes a driving behavior, in which the user-controlled ego vehicle
+follows a car on the highway. There're many other cars on the road
+but only two are able to change their lane (these cars are called as 'Opponents').
+At one point the opponent car changes its lane; one the opponents does it at a safe distance,
+and the other provokes a collision.
 """
 
 import carla
+from typing import cast, List, Tuple
 
 from py_trees.composites import (Parallel, Sequence)
 from py_trees.common import ParallelPolicy
@@ -43,13 +46,9 @@ SCENARIO
 class ChangeLane(BasicScenario):
 
     """
-    This class holds everything required for a "change lane" scenario involving three vehicles.
-    There are two vehicles driving in the same direction on the highway: A fast car and a slow car in front.
-    The fast car will change the lane, when it is close to the slow car.
-
-    The ego vehicle is driving right behind the fast Tesla car.
-
-    This is a single ego vehicle scenario
+    There are two vehicles driving in the same direction on the highway
+    that will change the lane after some driving period
+    when they are close to the ego car.
     """
 
     LANE_CHANGE_ORDER_SAFE_UNSAFE = 1
@@ -102,9 +101,9 @@ class ChangeLane(BasicScenario):
         self._laneChangeOrder = int(params)
         self._map = CarlaDataProvider.get_map()
         
-        self._ego_car = None        # carla.Vehicle
+        self._ego_car: carla.Vehicle = ego_vehicles[0]
         self._opponents = []        # [(carla.Vehicle, carla.Transform)]
-        self._other_cars = []       # [(carla.Vehicle, carla.Transform)]
+        self._other_cars: List[Tuple[carla.Vehicle, carla.Transform]] = []
 
         self._init_parameters()
 
@@ -125,7 +124,7 @@ class ChangeLane(BasicScenario):
         # add actors from JSON file
         for actor in config.other_actors:
             vehicle_transform = actor.transform
-            vehicle = CarlaDataProvider.request_new_actor(actor.model, vehicle_transform)
+            vehicle = cast(carla.Vehicle, CarlaDataProvider.request_new_actor(actor.model, vehicle_transform))
             vehicle.set_simulate_physics(enabled=False)
             self.other_actors.append(vehicle)
 

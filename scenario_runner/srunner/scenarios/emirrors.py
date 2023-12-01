@@ -14,7 +14,6 @@ and another runs behind it for some time. The this car accelerates and passes by
 """
 
 import carla
-import operator
 import random
 
 from typing import cast, List, Tuple
@@ -26,11 +25,12 @@ from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (ActorTransformSetter,
                                                                       WaypointFollower,
                                                                       Idle,
+                                                                      StopVehicle,
                                                                       ChangeAutoPilot)
 from srunner.scenariomanager.scenarioatomics.custom_behaviors import (DebugPrint,
-                                                                      VehicleFollower,
+                                                                      WaitForEvent,
+                                                                      StopVehicleImmediately,
                                                                       ApproachFromBehind)
-from srunner.scenariomanager.scenarioatomics.atomic_trigger_conditions import InTriggerDistanceToVehicle
 from srunner.scenariomanager.scenarioatomics.custom_trigger_conditions import DistractorSpawner
 from srunner.scenarios.basic_scenario import BasicScenario
 
@@ -59,13 +59,27 @@ DISTRACTOR_LOCATIONS = [
     carla.Location(71.0, 19.9, 11.1),
 ]
 
-DISTANCES = [15]
+DISTANCES = [15, 25, 7, 15, 25, 7]
 
-PAUSE_MIN = 30
-PAUSE_MAX = 120
+HIDDEN_LOCATION_START = carla.Location(100, -169, 1)
+HIDDEN_GAP_PER_CAR = 6
 
-VELOCITY_MAIN = 25.0         # m/s
-VELOCITY_PASSING_BY = 5.0    # m/s
+# pauses in seconds
+PAUSE_MIN = 20
+PAUSE_MAX = 30
+PAUSE_INTERVIEW = 10
+
+# velocities in m/s
+VELOCITY_MAIN = 25.0
+VELOCITY_APPROACHING = 3.0
+
+OPPONENT_CAR_TM_PARAMS = {
+    "auto_lane_change": False,
+    "distance_between_vehicles": 25,
+    "ignore_vehicles_percentage": 0,
+    "ignore_lights_percentage": 100,
+    "ignore_signs_percentage": 100
+}
 
 class EMirrors(BasicScenario):
 
@@ -107,7 +121,11 @@ class EMirrors(BasicScenario):
         # add actors from JSON file
         for actor in config.other_actors:
             
-            actor_ = CarlaDataProvider.request_new_actor(actor.model, actor.transform)
+            actor_ = CarlaDataProvider.request_new_actor(
+                actor.model,
+                actor.transform,
+                color='0,0,0',
+                autopilot=True)
             vehicle = cast(carla.Vehicle, actor_)
             vehicle.set_simulate_physics(enabled=False)
             self.other_actors.append(vehicle)
@@ -118,22 +136,33 @@ class EMirrors(BasicScenario):
     def _create_behavior(self):
 
         root = Parallel("Root", policy=ParallelPolicy.SUCCESS_ON_ONE)
-        
+
+        init = Sequence("Init")
+        init.add_child(ChangeAutoPilot(
+            self._ego_car,
+            activate=True,
+            name="Ego_AutoPilot",
+            parameters={
+                "auto_lane_change": False
+            }))
+
+        # car_index = 1
+        # for other_car, other_car_transform in self._other_cars:
+        #     init.add_child(ChangeAutoPilot(
+        #         other_car,
+        #         activate=True,
+        #         name=f"OtherCar{car_index}_AutoPilot",
+        #         parameters=OPPONENT_CAR_TM_PARAMS))
+
         trials = Sequence("Trials")
         
+        trial_index = 1
         for distance in DISTANCES:
 
-            trial = Parallel("Trial", policy=ParallelPolicy.SUCCESS_ON_ONE)
+            trial = Parallel(f"Trial{trial_index}", policy=ParallelPolicy.SUCCESS_ON_ONE)
 
             # Ego car
-            ego_car_sequence = Sequence("Ego")
-            ego_car_sequence.add_child(ChangeAutoPilot(
-                self._ego_car,
-                activate=True,
-                name="Ego_AutoPilot",
-                parameters={
-                    "auto_lane_change": False
-                }))
+            ego_car_sequence = Sequence(f"T{trial_index}_Ego")
             
             run_and_wait_car_approaching = Parallel("RunAndWaitCarApproaching", policy=ParallelPolicy.SUCCESS_ON_ONE)
             run_and_wait_car_approaching.add_child(self._follow_waypoints(
@@ -147,36 +176,54 @@ class EMirrors(BasicScenario):
                 pause
             ))
             
+            ego_car_sequence.add_child(DebugPrint(self._ego_car, f"T{trial_index}_EGO: Trial started"))
+            ego_car_sequence.add_child(DebugPrint(self._ego_car, f"T{trial_index}_EGO: distance = {distance} m, pause = {pause:.1f} sec"))
             ego_car_sequence.add_child(run_and_wait_car_approaching)
+            ego_car_sequence.add_child(WaitForEvent(trial_index, 0))    # sets the event with ID = trial_index
+            ego_car_sequence.add_child(StopVehicleImmediately(self._ego_car))
+            ego_car_sequence.add_child(DebugPrint(self._ego_car, f"T{trial_index}_EGO: A car approached. Pause for the interview"))
+            ego_car_sequence.add_child(self._follow_waypoints(
+                self._ego_car, f"T{trial_index}_Ego",
+                velocity=0,
+                duration=PAUSE_INTERVIEW,
+                event_id=trial_index + 1000))
+            ego_car_sequence.add_child(DebugPrint(self._ego_car, f"T{trial_index}_EGO: Trial finished"))
             
             trial.add_child(ego_car_sequence)
 
             # Other cars
-            i = 1
+            car_index = 1
             for other_car, other_car_transform in self._other_cars:
-                other_car_sequence = Sequence(f"OtherCar{i}")
+                other_car_sequence = Sequence(f"T{trial_index}_OtherCar{car_index}")
                 other_car_sequence.add_child(ActorTransformSetter(
                     other_car,
                     other_car_transform,
-                    name=f"OtherCar{i}_Placement"))
-                other_car_sequence.add_child(ChangeAutoPilot(
-                    other_car,
-                    activate=True,
-                    name=f"OtherCar{i}_AutoPilot",
-                    parameters={
-                        "auto_lane_change": False
-                    }))
+                    name=f"T{trial_index}_OtherCar{car_index}_Placement"))
                 other_car_sequence.add_child(self._follow_waypoints(
-                    other_car, f"OtherCar{i}_WaypointFollower",
-                    VELOCITY_MAIN))
-                # other_car_sequence.add_child(VehicleFollower(
-                #     other_car,
-                #     self._ego_car,
-                #     EMirrors.DISTANCE_BETWEEN_CARS,
-                #     name=f"OtherCar{i}_VehicleFollower"))
+                    other_car, f"T{trial_index}_OtherCar{car_index}",
+                    VELOCITY_MAIN + VELOCITY_APPROACHING,
+                    event_id=trial_index))
+                other_car_sequence.add_child(StopVehicleImmediately(other_car))
+                other_car_sequence.add_child(ActorTransformSetter(
+                    other_car,
+                    carla.Transform(carla.Location(
+                        HIDDEN_LOCATION_START.x + car_index * HIDDEN_GAP_PER_CAR,
+                        HIDDEN_LOCATION_START.y,
+                        HIDDEN_LOCATION_START.z)),
+                    name=f"T{trial_index}_OtherCar{car_index}_Hide"))
+                other_car_sequence.add_child(self._follow_waypoints(
+                    other_car, f"T{trial_index}_OtherCar{car_index}",
+                    velocity=0,
+                    event_id=trial_index + 1000))
+
                 trial.add_child(other_car_sequence)
+                car_index += 1
             
+            trials.add_child(DebugPrint(self._ego_car, f"TRIAL: start {trial_index}"))
             trials.add_child(trial)
+            trials.add_child(DebugPrint(self._ego_car, f"TRIAL: finished {trial_index}"))
+
+            trial_index += 1
         
         root.add_child(trials)
 
@@ -207,68 +254,35 @@ class EMirrors(BasicScenario):
         self.remove_all_actors()
 
 
-    ### ---------------------------------
-    ### BEHAVIOURS
-    ### ---------------------------------
+    # Internal
     
-    def _drive_until_close(self, vehicle, name, other, distance, velocity):
-        """
-        Wait until two cars approach each other
-        """
-        parallel = Parallel(f"{name}_FollowLaneUntilVehiclesAreClose",
-                            policy=ParallelPolicy.SUCCESS_ON_ONE)
-        parallel.add_children([
-            WaypointFollower(
-                vehicle,
-                velocity,
-                name=f"{name}_FollowLane"),
-            InTriggerDistanceToVehicle(
-                other,
-                vehicle,
-                distance=distance,
-                comparison_operator=operator.lt,
-                name=f"{name}_UntilVehiclesAreClose")
-        ])
-
-        return parallel
-
-    def _drive_until_far(self, vehicle, name, other, distance, velocity):
-        """
-        Wait until two cars are apart of each other
-        """
-        parallel = Parallel(f"{name}_FollowLaneUntilVehiclesAreFar",
-                            policy=ParallelPolicy.SUCCESS_ON_ONE)
-        parallel.add_children([
-            WaypointFollower(
-                vehicle,
-                velocity,
-                name=f"{name}_FollowLane"),
-            InTriggerDistanceToVehicle(
-                other,
-                vehicle,
-                distance=distance,
-                comparison_operator=operator.gt,
-                name=f"{name}_UntilVehiclesAreApart")
-        ])
-
-        return parallel
-
-    def _follow_waypoints(self, vehicle, name, velocity, duration=float("inf")):
+    def _follow_waypoints(self, vehicle, name, velocity, duration=None, event_id=None):
         """
         Follows waypoints
         """
         parallel = Parallel(f"{name}_DrivingUtilTimeout",
                             policy=ParallelPolicy.SUCCESS_ON_ONE)
 
-        # -- Follow the lane...
         parallel.add_child(WaypointFollower(
             vehicle,
             velocity,
             avoid_collision=True,
             name=f"{name}_LaneFollower"))
 
-        # -- until timout or as long as the session continues
-        parallel.add_child(Idle(duration, name=f"{name}_UntilTimeout"))
+        if duration is not None:
+            if event_id is not None:
+                # -- Drive for a certain period and set the global event at the end
+                parallel.add_child(WaitForEvent(event_id, duration, name=f"{name}_UntilTimeoutThenSetEvent"))
+            else:
+                # -- Drive for a certain period
+                parallel.add_child(Idle(duration, name=f"{name}_UntilTimeout"))
+        else:
+            if event_id is not None:
+                # -- Until the global event is set
+                parallel.add_child(WaitForEvent(event_id, name=f"{name}_UntilEvent"))
+            else:
+                # -- Until ego/opponent exist
+                parallel.add_child(Idle(name=f"{name}_UntilFinished"))
 
         return parallel
 

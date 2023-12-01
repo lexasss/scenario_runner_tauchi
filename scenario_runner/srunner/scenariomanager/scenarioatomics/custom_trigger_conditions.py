@@ -1,6 +1,8 @@
 import carla
 import operator
 
+from typing import cast
+
 from py_trees.common import (Status as BehaviourStatus)
 
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
@@ -8,6 +10,7 @@ from srunner.scenariomanager.scenarioatomics.atomic_trigger_conditions import At
 from srunner.scenariomanager.timer import GameTime
 
 from srunner.scenariomanager.scenarioatomics.atomic_behaviors import calculate_distance
+from srunner.scenariomanager.scenarioatomics.custom_behaviors import print_debug
 
 class DistractorSpawner(AtomicCondition):
 
@@ -50,7 +53,7 @@ class DistractorSpawner(AtomicCondition):
         self._comparison_operator = comparison_operator
         self._loop = loop
 
-        self._world = CarlaDataProvider.get_world()
+        self._world = cast(carla.World, CarlaDataProvider.get_world())
 
         self._distractor = None
         self._distractor_index = 0
@@ -86,11 +89,14 @@ class DistractorSpawner(AtomicCondition):
         if (self._distractor is not None):
             self._distractor.destroy()
             self._distractor = None
-            print(f'DISTRACTOR: {self._distractor_type} removed at {GameTime.get_time()}')
+            print_debug(f'DISTRACTOR: {self._distractor_type} removed / {GameTime.get_time():.1f} sec')
 
     def _create_distractor(self):
 
         self._remove_distractor()
+
+        x, y = self._distractor_location.x, self._distractor_location.y
+        time = self._distractor_creation_time
 
         try:
             transform = carla.Transform(self._distractor_location, carla.Rotation())
@@ -99,9 +105,10 @@ class DistractorSpawner(AtomicCondition):
             if distractor is not None:
                 self._distractor = distractor
                 self._distractor_creation_time = GameTime.get_time()
-                print(f'DISTRACTOR: {self._distractor_type} created at {self._distractor_location} / {self._distractor_creation_time}')
+
+                print_debug(f'DISTRACTOR: {self._distractor_type} created at ({x:.1f}, {y:.1f}) / {time:.1f} sec')
         except:
-            print(f'DISTRACTOR: Cannot create {self._distractor_type} at {self._distractor_location}')
+            print_debug(f'DISTRACTOR: Cannot create {self._distractor_type} at ({x:.1f}, {y:.1f})')
         finally:
             self._distractor_index += 1
             if self._distractor_index == len(self._distractor_locations):

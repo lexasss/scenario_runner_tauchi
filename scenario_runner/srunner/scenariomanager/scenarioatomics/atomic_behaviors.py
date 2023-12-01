@@ -23,6 +23,8 @@ import random
 import time
 import subprocess
 
+from typing import Optional
+
 import numpy as np
 import py_trees
 from py_trees.blackboard import Blackboard
@@ -98,7 +100,7 @@ class AtomicBehavior(py_trees.behaviour.Behaviour):
     - name: Name of the atomic behavior
     """
 
-    def __init__(self, name, actor=None):
+    def __init__(self, name, actor: Optional[carla.Actor]=None):
         """
         Default init. Has to be called via super from derived class
         """
@@ -1548,6 +1550,14 @@ class ChangeAutoPilot(AtomicBehavior):
                 ignore_vehicles = self._parameters["ignore_vehicles_percentage"]
                 self._tm.ignore_vehicles_percentage(self._actor, ignore_vehicles)
 
+            if "ignore_lights_percentage" in self._parameters:
+                ignore_lights = self._parameters["ignore_lights_percentage"]
+                self._tm.ignore_lights_percentage(self._actor, ignore_lights)
+
+            if "ignore_signs_percentage" in self._parameters:
+                ignore_signs = self._parameters["ignore_signs_percentage"]
+                self._tm.ignore_signs_percentage(self._actor, ignore_signs)
+
         new_status = py_trees.common.Status.SUCCESS
 
         self.logger.debug("%s.update()[%s->%s]" % (self.__class__.__name__, self.status, new_status))
@@ -2098,8 +2108,8 @@ class LaneChange(WaypointFollower):
     A parallel termination behavior has to be used.
     """
 
-    def __init__(self, actor, speed=10, direction='left', distance_same_lane=5, distance_other_lane=100,
-                 distance_lane_change=25, lane_changes=1, avoid_collision=False, name='LaneChange'):
+    def __init__(self, actor, speed=10.0, direction='left', distance_same_lane=5.0, distance_other_lane=100.0,
+                 distance_lane_change=25.0, lane_changes=1, avoid_collision=False, name='LaneChange'):
 
         self._direction = direction
         self._distance_same_lane = distance_same_lane
