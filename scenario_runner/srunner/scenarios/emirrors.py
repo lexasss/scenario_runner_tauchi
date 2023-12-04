@@ -15,6 +15,7 @@ and another runs behind it for some time. The this car accelerates and passes by
 
 import carla
 import random
+import copy
 
 from typing import cast, List, Tuple
 
@@ -35,7 +36,20 @@ from srunner.scenariomanager.scenarioatomics.custom_trigger_conditions import Di
 from srunner.scenarios.basic_scenario import BasicScenario
 
 DISTRACTOR = 'trafficcone01'
+DISTRACTOR_DISTANCE_TO_APPEAR = 200     # meters from the ego-car
+DISTRACTOR_LIFE_DURATION = 7            # seconds since appearance
 DISTRACTOR_LOCATIONS = [
+    carla.Location(-294.2, 19.1, 0.9),
+    carla.Location(-513.8, 182.9, 0.1),
+    carla.Location(-414.9, 410.5, 0.1),
+    carla.Location(-109.7, 415.8, 0.1),
+    carla.Location(2.9, 192.2, 0.1),
+    carla.Location(1.6, -91.0, 0.1),
+    carla.Location(136.8, -363.2, 0.1),
+    carla.Location(386.8, -283.5, 0.1),
+    carla.Location(358.8, 20.9, 0.3),
+    carla.Location(56.2, 6.8, 11.1),
+
     carla.Location(-282.1, 6.1, 1.3),
     carla.Location(-489.5, 35.2, 0.1),
     carla.Location(-460.0, 375.8, 0.1),
@@ -59,7 +73,8 @@ DISTRACTOR_LOCATIONS = [
     carla.Location(71.0, 19.9, 11.1),
 ]
 
-DISTANCES = [15, 25, 7, 15, 25, 7]
+DISTANCES = [7, 15, 25, 40]
+DISTANCE_REPETITIONS = 5
 
 HIDDEN_LOCATION_START = carla.Location(100, -169, 1)
 HIDDEN_GAP_PER_CAR = 6
@@ -105,6 +120,8 @@ class EMirrors(BasicScenario):
 
         self._ego_car: carla.Vehicle = ego_vehicles[0]
         self._other_cars: List[Tuple[carla.Vehicle, carla.Transform]] = []
+
+        self._distances = self._create_distances()
 
         super(EMirrors, self).__init__("EMirrors",
             ego_vehicles,
@@ -157,7 +174,7 @@ class EMirrors(BasicScenario):
         trials = Sequence("Trials")
         
         trial_index = 1
-        for distance in DISTANCES:
+        for distance in self._distances:
 
             trial = Parallel(f"Trial{trial_index}", policy=ParallelPolicy.SUCCESS_ON_ONE)
 
@@ -232,8 +249,8 @@ class EMirrors(BasicScenario):
             self._ego_car,
             DISTRACTOR,
             DISTRACTOR_LOCATIONS,
-            distance=200,
-            duration=7.5))
+            distance=DISTRACTOR_DISTANCE_TO_APPEAR,
+            duration=DISTRACTOR_LIFE_DURATION))
 
         root.add_child(distractor_sequence)
         
@@ -286,3 +303,12 @@ class EMirrors(BasicScenario):
 
         return parallel
 
+    def _create_distances(self):
+        distances: List[float] = []
+        for i in range(DISTANCE_REPETITIONS):
+            randomized_distances = copy.copy(DISTANCES)
+            random.shuffle(randomized_distances)
+            distances.extend(randomized_distances)
+
+        print('E-MIRRORS: Distances: ' + ' '.join([f'{d:.1f}' for d in distances]))
+        return distances
