@@ -16,6 +16,9 @@ and another runs behind it for some time. The this car accelerates and passes by
 import carla
 import random
 import copy
+import subprocess
+import sys
+import os
 
 from typing import cast, List, Tuple
 
@@ -34,7 +37,7 @@ from srunner.scenariomanager.scenarioatomics.custom_behaviors import (DebugPrint
 from srunner.scenariomanager.scenarioatomics.custom_trigger_conditions import DistractorSpawner
 from srunner.scenarios.basic_scenario import BasicScenario
 
-DISTRACTOR = 'trafficcone01'
+DISTRACTOR = "trafficcone01"
 DISTRACTOR_DISTANCE_TO_APPEAR = 200     # meters from the ego-car
 DISTRACTOR_LIFE_DURATION = 7            # seconds since appearance
 DISTRACTOR_LOCATIONS = [
@@ -112,6 +115,9 @@ class EMirrors(BasicScenario):
 
         print(f"E-MIRRORS: params = {params}")
 
+        if params == "2":
+            subprocess.Popen([sys.executable, "./srunner/scenarios/emirror_overlay/__main__.py"])
+
         self.timeout = timeout
 
         self._world = world
@@ -140,7 +146,7 @@ class EMirrors(BasicScenario):
             actor_ = CarlaDataProvider.request_new_actor(
                 actor.model,
                 actor.transform,
-                color='0,0,0',
+                color="0,0,0",
                 autopilot=True)
             vehicle = cast(carla.Vehicle, actor_)
             vehicle.set_simulate_physics(enabled=False)
@@ -309,5 +315,5 @@ class EMirrors(BasicScenario):
             random.shuffle(randomized_distances)
             distances.extend(randomized_distances)
 
-        print('E-MIRRORS: Distances: ' + ' '.join([f'{d:.1f}' for d in distances]))
+        print("E-MIRRORS: Distances: " + " ".join([f"{d:.1f}" for d in distances]))
         return distances
