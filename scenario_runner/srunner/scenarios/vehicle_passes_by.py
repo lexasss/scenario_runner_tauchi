@@ -47,7 +47,7 @@ class VehiclePassesBy(BasicScenario):
     DISTANCE_TO_APPROACH = 10               # meters
     DISTANCE_TO_OPPONENT_WHEN_FINISHED = 40 # meters
 
-    DURATION_DRIVING_BEHIND = 30            # seconds
+    DURATION_DRIVING_BEHIND = 60           # seconds
 
     VELOCITY_MAIN = 25.0                    # m/s
     VELOCITY_PASSING_BY = 5.0               # m/s

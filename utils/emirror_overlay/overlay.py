@@ -16,7 +16,7 @@ class Overlay:
     
     def __init__(self,
                  src_win_name: str,
-                 src_win_point: Tuple[int, int]) -> None:
+                 src_win_point: Optional[Tuple[int, int]] = None) -> None:
         
         # Get capturing (source) window and its properties
         self._src_hwnd = self._get_source_window(src_win_name, src_win_point)
@@ -81,12 +81,15 @@ class Overlay:
             image_data = np.frombuffer(image_data.tobytes(), dtype=np.uint8).reshape((captured_image.size[0], captured_image.size[1], 3))
             self._display.render(image_data)
             
-    def _get_source_window(self, window_title: str, point: Tuple[int,int]) -> int:
+    def _get_source_window(self, window_title: str, point: Optional[Tuple[int,int]]) -> int:
         windows = gw.getWindowsWithTitle(window_title)
         if windows:
-            for wnd in windows:
-                rect = win32gui.GetWindowRect(wnd._hWnd)
-                if win32gui.PtInRect(rect, point):
-                    return wnd._hWnd
+            if point is None:
+                return windows[0]._hWnd
+            else:
+                for wnd in windows:
+                    rect = win32gui.GetWindowRect(wnd._hWnd)
+                    if win32gui.PtInRect(rect, point):
+                        return wnd._hWnd
         
         raise Exception(f'Window "{window_title}" with point {point} not found.')
