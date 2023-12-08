@@ -12,3 +12,6 @@ six
 simple-watchdog-timer
 pygame
 event_bus
+pygetwindow
+moderngl
+pywin32

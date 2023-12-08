@@ -26,7 +26,6 @@ from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (ActorTransformSetter,
                                                                       WaypointFollower,
                                                                       Idle,
-                                                                      StopVehicle,
                                                                       ChangeAutoPilot)
 from srunner.scenariomanager.scenarioatomics.custom_behaviors import (DebugPrint,
                                                                       WaitForEvent,
