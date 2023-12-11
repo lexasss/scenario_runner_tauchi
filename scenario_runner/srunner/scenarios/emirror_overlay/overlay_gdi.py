@@ -2,16 +2,18 @@ from opengl_renderer import OpenGLRenderer
 
 from typing import Optional, Tuple
 
+import os
 import pygame
 import win32gui
 import win32ui
 import win32con
 import pygetwindow as gw
 import numpy as np
+import ctypes
 from PIL import Image
 from time import sleep
 
-class Overlay:
+class OverlayGDI:
     SHADER = 'zoom_in'
     
     def __init__(self,
@@ -28,7 +30,7 @@ class Overlay:
         self._size = (width, height)
         self._location = x, y
 
-        # Create a buffer for copying window's content
+        # Initialize a GDI buffer for copying window's content
         self._hwnd_dc = win32gui.GetWindowDC(self._src_hwnd)
         self._src_dc = win32ui.CreateDCFromHandle(self._hwnd_dc) 
         self._dst_dc = self._src_dc.CreateCompatibleDC()                                             
@@ -37,17 +39,11 @@ class Overlay:
         self._bmp.CreateCompatibleBitmap(self._src_dc, width, height)    
         self._dst_dc.SelectObject(self._bmp)      
         
-        # Get target window location   
-        # if screen is not None:
-        #     monitors = win32api.EnumDisplayMonitors()
-        #     if len(monitors) > screen:
-        #         info = monitors[screen]
-        #         rect = info[2]
-
         # Create GL display (destination window)
-        self._display = OpenGLRenderer(self._size, Overlay.SHADER)
+        self._display = OpenGLRenderer(self._size, OverlayGDI.SHADER)
 
-        icon = pygame.image.load('./srunner/scenarios/emirror_overlay/images/icon.png')
+        icon_filename = os.path.join(os.getcwd(), 'scenario_runner', 'srunner', 'scenarios', 'emirror_overlay', 'images', 'icon.png')
+        icon = pygame.image.load(icon_filename)
         pygame.display.set_icon(icon)
         
         dst_hwnd = pygame.display.get_wm_info()['window']
@@ -60,25 +56,37 @@ class Overlay:
                 if event.type == pygame.QUIT:
                     running = False
                     
-            self._copy_window()
+            image = self._capture_window()
+            self._render(image)
             
             pygame.display.flip()
             sleep(0.012)
 
+        # Cleanup
+        win32gui.DeleteObject(self._bmp.GetHandle())
+        self._src_dc.DeleteDC()
+        self._dst_dc.DeleteDC()
         win32gui.ReleaseDC(self._src_hwnd, self._hwnd_dc)
         
     # Internal
     
-    def _copy_window(self) -> None:
+    def _capture_window(self) -> Image.Image:
 
-        self._dst_dc.BitBlt((0, 0), self._size, self._src_dc, (0, 0), win32con.SRCCOPY) 
+        # BitBlt does not capture windows with hardware acceleration enabled
+        # self._dst_dc.BitBlt((0, 0), self._size, self._src_dc, (0, 0), win32con.SRCCOPY) 
+
+        # PrintWindow should capture windows with hardware acceleration enabled
+        PW_RENDERFULLCONTENT = 0x02
+        ctypes.windll.user32.PrintWindow(self._src_hwnd, self._dst_dc.GetSafeHdc(), PW_RENDERFULLCONTENT)
+
         bmp_array = self._bmp.GetBitmapBits(True)
-        captured_image = Image.frombuffer("RGB", self._size, bmp_array, "raw", "BGRX", 0, 1)
+        return Image.frombuffer("RGB", self._size, bmp_array, "raw", "BGRX", 0, 1)
 
-        if captured_image:
+    def _render(self, image: Optional[Image.Image]) -> None:
+        if image:
             # Convert captured image to a format usable by Pygame (if needed)
-            image_data = captured_image.convert("RGB")
-            image_data = np.frombuffer(image_data.tobytes(), dtype=np.uint8).reshape((captured_image.size[0], captured_image.size[1], 3))
+            image_data = image.convert("RGB")
+            image_data = np.frombuffer(image_data.tobytes(), dtype=np.uint8).reshape((image.size[0], image.size[1], 3))
             self._display.render(image_data)
             
     def _get_source_window(self, window_title: str, point: Optional[Tuple[int,int]]) -> int:
