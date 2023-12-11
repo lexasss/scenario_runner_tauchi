@@ -42,7 +42,7 @@ class OverlayGDI:
         # Create GL display (destination window)
         self._display = OpenGLRenderer(self._size, OverlayGDI.SHADER)
 
-        icon_filename = os.path.join(os.getcwd(), 'scenario_runner', 'srunner', 'scenarios', 'emirror_overlay', 'images', 'icon.png')
+        icon_filename = os.path.join(os.getcwd(), 'srunner', 'scenarios', 'emirror_overlay', 'images', 'icon.png')
         icon = pygame.image.load(icon_filename)
         pygame.display.set_icon(icon)
         

@@ -38,9 +38,9 @@ const float PHASE_120 = 2.0 * PI / 3.0;
 const vec3 MATRIX_COLOR = vec3(1, 0, 1);
 
 // Constants for image distortion
-const vec2 CENTER = vec2(0.5, 0.5);
+const vec2 CENTER = vec2(0.5, 0.4);
 const vec2 EXP    = vec2(2.0, 1.5);
-const vec2 ZOOM   = vec2(0.5, 0.5);
+const vec2 ZOOM   = vec2(0.9, 0.9);
 
 // Pipeline attributes
 in vec2 v_uv;      // modernGL only

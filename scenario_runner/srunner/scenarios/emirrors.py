@@ -115,6 +115,7 @@ class EMirrors(BasicScenario):
         print(f"E-MIRRORS: params = {params}")
 
         if params == "2":
+            # subprocess.Popen(["C:\\Users\\TAUCHI\\Desktop\\emirror-overlay\\WinRT.GraphicsCapture.exe", "MultiWindow"])
             subprocess.Popen([sys.executable, "./srunner/scenarios/emirror_overlay/__main__.py"])
 
         self.timeout = timeout

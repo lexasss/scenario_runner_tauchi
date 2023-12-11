@@ -17,7 +17,7 @@ class OpenGLRenderer:
         screen = pygame.display.set_mode(size, pygame.constants.DOUBLEBUF | pygame.constants.OPENGL | pygame.constants.NOFRAME ).convert((0xff, 0xff00, 0xff0000, 0))
         ctx = moderngl.create_context()
 
-        path = os.path.join(os.getcwd(), 'scenario_runner', 'srunner', 'scenarios', 'emirror_overlay', 'shaders')
+        path = os.path.join(os.getcwd(), 'srunner', 'scenarios', 'emirror_overlay', 'shaders')
         vert_filename = os.path.join(path, f'{shader_name}.vert') 
         frag_filename = os.path.join(path, f'{shader_name}.frag') 
         self._program = ctx.program(
