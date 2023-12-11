@@ -35,6 +35,40 @@ function Get-Order
     return 0
 }
 
+function CheckVechicleSettings
+{
+    $FilePath = "C:\Users\olequ\Downloads\CARLA 0.9.13\CarlaUE4\Config\DrEyeVr.ini"
+    $FilteredLines = Get-Content -Path $FilePath | Select-String -Pattern "RICHA" | Select-String -Pattern "^\s*;"
+    return $FilteredLines.Length
+}
+
+function CheckCameraSettings
+{
+    $FilePath = "C:\Users\olequ\AppData\Local\CarlaUE4\Saved\Config\CameraSettings.ini"
+    $FilteredLines = Get-Content -Path $FilePath | Select-String -Pattern "RICHA" | Select-object -First 1 | Select-String -Pattern "^\s*;"
+    return $FilteredLines.Length
+}
+
+if (CheckVechicleSettings -ne 0)
+{
+    Write-Host "==== MISCONFIGURED ===="
+    Write-Host "File 'DrEyeVr.ini' has some lines with 'RICHA' mark commented out"
+    Write-Host ""
+    Write-Host "Exiting...."
+    return
+}
+
+$isOK = CheckCameraSettings -ne 0
+if (-not $isOK)
+{
+    Write-Host "==== MISCONFIGURED ===="
+    Write-Host "File 'CameraSettingd.ini' is not the one configured for 'RICHA'"
+    Write-Host ""
+    Write-Host "Exiting...."
+    return
+}
+
+return
 
 Set-Location ..
 

@@ -30,6 +30,7 @@ from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (ActorTrans
                                                                       Idle,
                                                                       ChangeAutoPilot)
 from srunner.scenariomanager.scenarioatomics.custom_behaviors import (DebugPrint,
+                                                                      Log,
                                                                       WaitForEvent,
                                                                       StopVehicleImmediately,
                                                                       ApproachFromBehind)
@@ -204,6 +205,7 @@ class EMirrors(BasicScenario):
             ego_car_sequence.add_child(WaitForEvent(trial_index, 0))    # sets the event with ID = trial_index
             ego_car_sequence.add_child(StopVehicleImmediately(self._ego_car))
             ego_car_sequence.add_child(DebugPrint(self._ego_car, f"T{trial_index}_EGO: A car approached. Pause for the interview"))
+            ego_car_sequence.add_child(Log("trial", "stage", "interview"))
             ego_car_sequence.add_child(self._follow_waypoints(
                 self._ego_car, f"T{trial_index}_Ego",
                 velocity=0,
@@ -241,9 +243,9 @@ class EMirrors(BasicScenario):
                 trial.add_child(other_car_sequence)
                 car_index += 1
             
-            trials.add_child(DebugPrint(self._ego_car, f"TRIAL: start {trial_index}"))
+            trials.add_child(Log("trial", "start", trial_index, distance, f"{pause:.1f}"))
             trials.add_child(trial)
-            trials.add_child(DebugPrint(self._ego_car, f"TRIAL: finished {trial_index}"))
+            trials.add_child(Log("trial", "stop", trial_index))
 
             trial_index += 1
         
