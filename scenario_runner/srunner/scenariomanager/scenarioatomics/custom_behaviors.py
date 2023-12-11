@@ -1,3 +1,4 @@
+import io
 import carla
 import math
 
@@ -68,6 +69,33 @@ class DebugPrint(AtomicBehavior):
         if DebugPrint.is_enabled:
             print_debug(self._message)
         return BehaviourStatus.SUCCESS
+
+class Log(AtomicBehavior):
+    """
+    A class to print out a message to a log file
+
+    Important parameters:
+    - actor: the vehicle whose ID will be printed out
+    - message to print out
+    - name: Name of the atomic behavior
+    """
+
+    file: io.TextIOWrapper = open(f'log_{datetime.now().strftime("%Y_%m_%d-%H_%M_%S")}', 'w')
+    
+    def __init__(self, source, type, *data):
+        super(Log, self).__init__("Log")
+        self.logger.debug("%s.__init__()" % (self.__class__.__name__))
+        d = '\t'.join(data)
+        self._message = f"{source}\t{type}\t{d}\n"
+
+    def update(self):
+        current_time = datetime.now().strftime("%H:%M:%S")
+        Log.file.write(f"{current_time}\t{self._message}")
+        return BehaviourStatus.SUCCESS
+    
+    @staticmethod
+    def close():
+        Log.file.close()
 
 class WaitForEvent(TimeOut):
     """
