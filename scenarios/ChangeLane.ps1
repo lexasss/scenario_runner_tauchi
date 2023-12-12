@@ -88,8 +88,14 @@ Set-Variable -Name "telemetry"
 
 if ($order -gt 0)
 {
-    Start-Process -FilePath "D:\CarlaGit\carla\Build\UE4Carla\0.9.13-50-gba3e0f5b2-dirty\WindowsNoEditor\CarlaUE4.exe"
-    Start-Sleep -Seconds 7.0
+    $isCarlaRunning = Get-Process -Name "CarlaUE4" -ErrorAction SilentlyContinue
+    if ($isCarlaRunning -eq $null)
+    {
+        Write-Host "Starting CARLA. Please wait..."
+        Start-Process -FilePath "D:\CarlaGit\carla\Build\UE4Carla\0.9.13-50-gba3e0f5b2-dirty\WindowsNoEditor\CarlaUE4.exe"
+        Start-Sleep -Seconds 7.0
+    }
+
 	$telemetry = Start-Process `
         -FilePath "python" `
         -ArgumentList "D:\CarlaGit\carla\test_udp_telemetry.py" `
