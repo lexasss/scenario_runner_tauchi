@@ -80,13 +80,16 @@ class Log(AtomicBehavior):
     - name: Name of the atomic behavior
     """
 
-    file: io.TextIOWrapper = open(f'log_{datetime.now().strftime("%Y_%m_%d-%H_%M_%S")}', 'w')
+    file: io.TextIOWrapper
     
     def __init__(self, source, type, *data):
         super(Log, self).__init__("Log")
         self.logger.debug("%s.__init__()" % (self.__class__.__name__))
         d = '\t'.join(data)
         self._message = f"{source}\t{type}\t{d}\n"
+
+        if Log.file is None:
+            Log.file = open(f'log_{datetime.now().strftime("%Y_%m_%d-%H_%M_%S")}.txt', 'w')
 
     def update(self):
         current_time = datetime.now().strftime("%H:%M:%S")

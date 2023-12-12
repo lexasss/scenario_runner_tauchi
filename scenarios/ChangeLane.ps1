@@ -5,9 +5,11 @@
 #    srunner/scenarios/route_scenario.py
 #    srunner/data/routes_town04_circular.xml
 
+# Helpers
+
 function Get-Order
 {
-    [string[]]$order = 'Safe, then Unsafe', 'Unsafe, then Safe'
+    $order = 'Safe, then Unsafe', 'Unsafe, then Safe'
 
     Write-Host "Available lane change order:"
     Write-Host ""
@@ -37,38 +39,43 @@ function Get-Order
 
 function CheckVechicleSettings
 {
-    $FilePath = "C:\Users\olequ\Downloads\CARLA 0.9.13\CarlaUE4\Config\DrEyeVr.ini"
+    $FilePath = "D:\CarlaGit\carla\Build\UE4Carla\0.9.13-50-gba3e0f5b2-dirty\WindowsNoEditor\CarlaUE4\Config\DReyeVRConfig.ini"
     $FilteredLines = Get-Content -Path $FilePath | Select-String -Pattern "RICHA" | Select-String -Pattern "^\s*;"
-    return $FilteredLines.Length
+    return $FilteredLines.Length -eq 0
 }
 
 function CheckCameraSettings
 {
-    $FilePath = "C:\Users\olequ\AppData\Local\CarlaUE4\Saved\Config\CameraSettings.ini"
+    $FilePath = "C:\Users\TAUCHI\AppData\Local\CarlaUE4\Saved\Config\CaptureCameras.ini"
     $FilteredLines = Get-Content -Path $FilePath | Select-String -Pattern "RICHA" | Select-object -First 1 | Select-String -Pattern "^\s*;"
-    return $FilteredLines.Length
+    return $FilteredLines.Length -ne 0
 }
 
-if (CheckVechicleSettings -ne 0)
-{
-    Write-Host "==== MISCONFIGURED ===="
-    Write-Host "File 'DrEyeVr.ini' has some lines with 'RICHA' mark commented out"
-    Write-Host ""
-    Write-Host "Exiting...."
-    return
-}
 
-$isOK = CheckCameraSettings -ne 0
+# Routine
+
+
+$isOK = CheckVechicleSettings
 if (-not $isOK)
 {
     Write-Host "==== MISCONFIGURED ===="
-    Write-Host "File 'CameraSettingd.ini' is not the one configured for 'RICHA'"
+    Write-Host "File 'DReyeVRConfig.ini' has some lines with 'RICHA' mark commented out"
     Write-Host ""
     Write-Host "Exiting...."
     return
 }
 
-return
+$isOK = CheckCameraSettings
+if (-not $isOK)
+{
+    Write-Host "==== MISCONFIGURED ===="
+    Write-Host "File 'CaptureCameras.ini' is not the one configured for 'RICHA'"
+    Write-Host ""
+    Write-Host "Exiting...."
+    return
+}
+
+$order = Get-Order
 
 Set-Location ..
 
@@ -77,15 +84,14 @@ Set-Location ..
 
 Set-Location .\scenario_runner
 
-$order = Get-Order
 if ($order -gt 0)
 {
-    Start-Process -FilePath "D:\\CarlaGit\\carla\\Build\\UE4Carla\\0.9.13-50-gba3e0f5b2-dirty\\WindowsNoEditor\\CarlaUE4.exe"
+    Start-Process -FilePath "D:\CarlaGit\carla\Build\UE4Carla\0.9.13-50-gba3e0f5b2-dirty\WindowsNoEditor\CarlaUE4.exe"
     Start-Sleep -Seconds 7.0
 	Start-Process `
         -FilePath "python" `
-        -ArgumentList "D:\\CarlaGit\\carla\\test_udp_telemetry.py" `
-        -WorkingDirectory "D:\\CarlaGit\\experiments\\scenarios"
+        -ArgumentList "D:\CarlaGit\carla\test_udp_telemetry.py" `
+        -WorkingDirectory "D:\CarlaGit\experiments\scenarios"
     python run_experiment.py `
         --title changelane `
         --route `
