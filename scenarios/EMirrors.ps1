@@ -5,9 +5,13 @@
 #    srunner/scenarios/route_scenario.py
 #    srunner/data/routes_town04_circular.xml
 
+# Helpers
+
+$SettingsMark = "OLEG"
+
 function Get-Condition
 {
-    [string[]]$condition = 'in all conventional locations', 'rear-view location only'
+    [string[]]$condition = "in all conventional locations", "rear-view location only"
 
     Write-Host "E-Mirrors are located"
     Write-Host ""
@@ -35,28 +39,76 @@ function Get-Condition
     return 0
 }
 
+function CheckVechicleSettings
+{
+    $FilePath = "D:\CarlaGit\carla\Build\UE4Carla\0.9.13-50-gba3e0f5b2-dirty\WindowsNoEditor\CarlaUE4\Config\DReyeVRConfig.ini"
+    $FilteredLines = Get-Content -Path $FilePath | Select-String -Pattern $SettingsMark | Select-String -Pattern "^\s*;"
+    return $FilteredLines.Length -eq 0
+}
+
+function CheckCameraSettings
+{
+    $FilePath = "C:\Users\TAUCHI\AppData\Local\CarlaUE4\Saved\Config\CaptureCameras.ini"
+    $FilteredLines = Get-Content -Path $FilePath | Select-String -Pattern $SettingsMark | Select-object -First 1 | Select-String -Pattern "^\s*;"
+    return $FilteredLines.Length -ne 0
+}
+
+
+# Routine
+
+$isOK = CheckVechicleSettings
+if (-not $isOK)
+{
+    Write-Host "==== MISCONFIGURED ===="
+    Write-Host "File 'DReyeVRConfig.ini' has some lines with '$SettingsMark' mark commented out"
+    Write-Host ""
+    Write-Host "Exiting...."
+    return
+}
+
+$isOK = CheckCameraSettings
+if (-not $isOK)
+{
+    Write-Host "==== MISCONFIGURED ===="
+    Write-Host "File 'CaptureCameras.ini' is not the one configured for '$SettingsMark'"
+    Write-Host ""
+    Write-Host "Exiting...."
+    return
+}
+
+$condition = Get-Condition
+if ($condition -le 0)
+{
+    return
+}
 
 Set-Location ..
 
 . ".set-env.ps1"
 . ".enter-venv.ps1"
 
-Set-Location .\scenario_runner
-
-$condition = Get-Condition
-if ($condition -gt 0)
+$carla = Get-Process -Name "CarlaUE4" -ErrorAction SilentlyContinue
+if ($null -eq $carla)
 {
-    python run_experiment.py `
-        --title emirror `
-        --route srunner/data/routes_town04_circular.xml `
-                srunner/data/scenario_emirrors.json `
-                0 `
-        --reloadWorld `
-        --waitForEgo `
-        --params=$condition
-    
-    Write-Host ""
-    Write-Host "Done"
+    Write-Host "Starting CARLA. Please wait..."
+    $carla = Start-Process -FilePath "D:\CarlaGit\carla\Build\UE4Carla\0.9.13-50-gba3e0f5b2-dirty\WindowsNoEditor\CarlaUE4.exe" -PassThru
+    Start-Sleep -Seconds 7.0
 }
 
+Set-Location .\scenario_runner
+
+python run_experiment.py `
+    --title emirror `
+    --route srunner/data/routes_town04_circular.xml `
+            srunner/data/scenario_emirrors.json `
+            0 `
+    --reloadWorld `
+    --waitForEgo `
+    --params=$condition
+
 Set-Location ..\scenarios
+
+Stop-Process -InputObject $carla
+
+Write-Host ""
+Write-Host "Done"

@@ -7,6 +7,8 @@
 
 # Helpers
 
+$SettingsMark = "RICHA"
+
 function Get-Order
 {
     $order = 'Safe, then Unsafe', 'Unsafe, then Safe'
@@ -40,14 +42,14 @@ function Get-Order
 function CheckVechicleSettings
 {
     $FilePath = "D:\CarlaGit\carla\Build\UE4Carla\0.9.13-50-gba3e0f5b2-dirty\WindowsNoEditor\CarlaUE4\Config\DReyeVRConfig.ini"
-    $FilteredLines = Get-Content -Path $FilePath | Select-String -Pattern "RICHA" | Select-String -Pattern "^\s*;"
+    $FilteredLines = Get-Content -Path $FilePath | Select-String -Pattern $SettingsMark | Select-String -Pattern "^\s*;"
     return $FilteredLines.Length -eq 0
 }
 
 function CheckCameraSettings
 {
     $FilePath = "C:\Users\TAUCHI\AppData\Local\CarlaUE4\Saved\Config\CaptureCameras.ini"
-    $FilteredLines = Get-Content -Path $FilePath | Select-String -Pattern "RICHA" | Select-object -First 1 | Select-String -Pattern "^\s*;"
+    $FilteredLines = Get-Content -Path $FilePath | Select-String -Pattern $SettingsMark | Select-object -First 1 | Select-String -Pattern "^\s*;"
     return $FilteredLines.Length -ne 0
 }
 
@@ -59,7 +61,7 @@ $isOK = CheckVechicleSettings
 if (-not $isOK)
 {
     Write-Host "==== MISCONFIGURED ===="
-    Write-Host "File 'DReyeVRConfig.ini' has some lines with 'RICHA' mark commented out"
+    Write-Host "File 'DReyeVRConfig.ini' has some lines with '$SettingsMark' mark commented out"
     Write-Host ""
     Write-Host "Exiting...."
     return
@@ -69,55 +71,52 @@ $isOK = CheckCameraSettings
 if (-not $isOK)
 {
     Write-Host "==== MISCONFIGURED ===="
-    Write-Host "File 'CaptureCameras.ini' is not the one configured for 'RICHA'"
+    Write-Host "File 'CaptureCameras.ini' is not the one configured for '$SettingsMark'"
     Write-Host ""
     Write-Host "Exiting...."
     return
 }
 
 $order = Get-Order
+if ($order -le 0)
+{
+    return
+}
 
 Set-Location ..
 
 . ".set-env.ps1"
 . ".enter-venv.ps1"
 
+$isCarlaRunning = Get-Process -Name "CarlaUE4" -ErrorAction SilentlyContinue
+if ($null -eq $isCarlaRunning)
+{
+    Write-Host "Starting CARLA. Please wait..."
+    Start-Process -FilePath "D:\CarlaGit\carla\Build\UE4Carla\0.9.13-50-gba3e0f5b2-dirty\WindowsNoEditor\CarlaUE4.exe"
+    Start-Sleep -Seconds 7.0
+}
+
+$telemetry = Start-Process `
+    -FilePath "python" `
+    -ArgumentList "D:\CarlaGit\carla\test_udp_telemetry.py" `
+    -WorkingDirectory "D:\CarlaGit\experiments\scenarios" `
+    -PassThru
+
 Set-Location .\scenario_runner
 
-Set-Variable -Name "telemetry"
-
-if ($order -gt 0)
-{
-    $isCarlaRunning = Get-Process -Name "CarlaUE4" -ErrorAction SilentlyContinue
-    if ($isCarlaRunning -eq $null)
-    {
-        Write-Host "Starting CARLA. Please wait..."
-        Start-Process -FilePath "D:\CarlaGit\carla\Build\UE4Carla\0.9.13-50-gba3e0f5b2-dirty\WindowsNoEditor\CarlaUE4.exe"
-        Start-Sleep -Seconds 7.0
-    }
-
-	$telemetry = Start-Process `
-        -FilePath "python" `
-        -ArgumentList "D:\CarlaGit\carla\test_udp_telemetry.py" `
-        -WorkingDirectory "D:\CarlaGit\experiments\scenarios" `
-        -PassThru
-    python run_experiment.py `
-        --title changelane `
-        --route `
-            srunner/data/routes_town04_circular.xml `
-            srunner/data/scenario_changelane.json `
-            0 `
-        --reloadWorld `
-        --waitForEgo `
-        --params=$order
-    
-    Write-Host ""
-    Write-Host "Done"
-}
-
-if ($telemetry)
-{
-    Stop-Process -InputObject $telemetry
-}
+python run_experiment.py `
+    --title changelane `
+    --route `
+        srunner/data/routes_town04_circular.xml `
+        srunner/data/scenario_changelane.json `
+        0 `
+    --reloadWorld `
+    --waitForEgo `
+    --params=$order
 
 Set-Location ..\scenarios
+
+Stop-Process -InputObject $telemetry -ErrorAction SilentlyContinue
+    
+Write-Host ""
+Write-Host "Done"

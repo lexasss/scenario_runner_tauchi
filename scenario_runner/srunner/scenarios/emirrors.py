@@ -33,7 +33,8 @@ from srunner.scenariomanager.scenarioatomics.custom_behaviors import (DebugPrint
                                                                       Log,
                                                                       WaitForEvent,
                                                                       StopVehicleImmediately,
-                                                                      ApproachFromBehind)
+                                                                      ApproachFromBehind,
+                                                                      EMirrorsScoresClient)
 from srunner.scenariomanager.scenarioatomics.custom_trigger_conditions import DistractorSpawner
 from srunner.scenarios.basic_scenario import BasicScenario
 
@@ -161,6 +162,7 @@ class EMirrors(BasicScenario):
         root = Parallel("Root", policy=ParallelPolicy.SUCCESS_ON_ONE)
 
         init = Sequence("Init")
+        init.add_child(EMirrorsScoresClient("start"))
         init.add_child(ChangeAutoPilot(
             self._ego_car,
             activate=True,
@@ -206,12 +208,14 @@ class EMirrors(BasicScenario):
             ego_car_sequence.add_child(StopVehicleImmediately(self._ego_car))
             ego_car_sequence.add_child(DebugPrint(self._ego_car, f"T{trial_index}_EGO: A car approached. Pause for the interview"))
             ego_car_sequence.add_child(Log("trial", "stage", "interview"))
+            ego_car_sequence.add_child(EMirrorsScoresClient("pause"))
             ego_car_sequence.add_child(self._follow_waypoints(
                 self._ego_car, f"T{trial_index}_Ego",
                 velocity=0,
                 duration=PAUSE_INTERVIEW,
                 event_id=trial_index + 1000))
             ego_car_sequence.add_child(DebugPrint(self._ego_car, f"T{trial_index}_EGO: Trial finished"))
+            ego_car_sequence.add_child(EMirrorsScoresClient("continue"))
             
             trial.add_child(ego_car_sequence)
 
@@ -244,10 +248,14 @@ class EMirrors(BasicScenario):
                 car_index += 1
             
             trials.add_child(Log("trial", "start", trial_index, distance, f"{pause:.1f}"))
+            trials.add_child(EMirrorsScoresClient(f"trial\tstart\t{trial_index}\t{distance}\t{pause:.1f}"))
             trials.add_child(trial)
+            trials.add_child(EMirrorsScoresClient(f"trial\tend\t{trial_index}"))
             trials.add_child(Log("trial", "stop", trial_index))
 
             trial_index += 1
+        
+        trials.add_child(EMirrorsScoresClient("stop"))
         
         root.add_child(trials)
 

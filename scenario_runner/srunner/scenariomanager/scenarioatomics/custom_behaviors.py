@@ -14,6 +14,8 @@ from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (calculate_
                                                                       AtomicBehavior)
 from srunner.scenariomanager.timer import (GameTime, TimeOut)
 
+from net.tcp_client import TcpClient
+
 def print_debug(message):
     current_time = datetime.now().strftime("%H:%M:%S")
     print(f"{current_time} [DEBUG]: {message}")
@@ -409,4 +411,48 @@ class StopVehicleImmediately(AtomicBehavior):
     def update(self):
         self._actor.set_target_velocity(carla.Vector3D())
         return BehaviourStatus.SUCCESS
+
+
+class EMirrorsScoresClient(AtomicBehavior):
+
+    """
+    Sends commands and events to the EMirrorsScores app
+
+    Important parameters:
+    - name: Name of the atomic behavior
+    """
+
+    client: Optional[TcpClient] = None
+
+    def __init__(self, data, name="EMirrorsScoresClient"):
+        """
+        Default init. Has to be called via super from derived class
+        """
+        super(EMirrorsScoresClient, self).__init__(name)
+        self.logger.debug("%s.__init__()" % (self.__class__.__name__))
+        
+        self._data = data
+        
+        if EMirrorsScoresClient.client is None:
+            EMirrorsScoresClient.client = TcpClient('192.168.1.130')
+            EMirrorsScoresClient.client.connect(lambda x: print(f'[TCP] {x}'))
+
+    def update(self):
+        if EMirrorsScoresClient.client:
+            EMirrorsScoresClient.client.send(self._data)
+            
+            if self._data == 'stop':
+                EMirrorsScoresClient.client.close()
+            
+        return BehaviourStatus.SUCCESS
+
+    def terminate(self, new_status):
+        """
+        Connection termination
+        """
+        if EMirrorsScoresClient.client:
+            EMirrorsScoresClient.client.close()
+            EMirrorsScoresClient.client = None
+            
+        super(EMirrorsScoresClient, self).terminate(new_status)
 

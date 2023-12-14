@@ -5,7 +5,7 @@ from socket import socket
 
 from net.simple_socket_server import SimpleSocketServer
 
-PORT = 46228
+PORT = 27117
 
 class TcpServer:
     def __init__(self) -> None:
