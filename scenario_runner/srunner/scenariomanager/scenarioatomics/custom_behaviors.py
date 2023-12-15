@@ -4,7 +4,7 @@ import math
 
 from datetime import datetime
 
-from typing import List, Dict, Optional
+from typing import Optional, List, TextIO
 
 from py_trees.common import (Status as BehaviourStatus)
 
@@ -39,7 +39,6 @@ class VehicleLightsControls(AtomicBehavior):
         self._actor: carla.Vehicle
 
         super(VehicleLightsControls, self).__init__(name, actor)
-        self.logger.debug("%s.__init__()" % (self.__class__.__name__))
         
         self.light_status = light_status
 
@@ -64,7 +63,7 @@ class DebugPrint(AtomicBehavior):
     
     def __init__(self, actor, message, name="DebugPrint"):
         super(DebugPrint, self).__init__(name, actor)
-        self.logger.debug("%s.__init__()" % (self.__class__.__name__))
+
         self._message = message
 
     def update(self):
@@ -82,25 +81,29 @@ class Log(AtomicBehavior):
     - name: Name of the atomic behavior
     """
 
-    file: io.TextIOWrapper
+    file: Optional[TextIO] = None
     
     def __init__(self, source, type, *data):
         super(Log, self).__init__("Log")
-        self.logger.debug("%s.__init__()" % (self.__class__.__name__))
-        d = '\t'.join(data)
+
+        d = '\t'.join([f"{x}" for x in data])
         self._message = f"{source}\t{type}\t{d}\n"
 
-        if Log.file is None:
-            Log.file = open(f'log_{datetime.now().strftime("%Y_%m_%d-%H_%M_%S")}.txt', 'w')
-
     def update(self):
-        current_time = datetime.now().strftime("%H:%M:%S")
-        Log.file.write(f"{current_time}\t{self._message}")
+        if Log.file is not None:
+            current_time = datetime.now().strftime("%H:%M:%S")
+            Log.file.write(f"{current_time}\t{self._message}")
         return BehaviourStatus.SUCCESS
-    
+
+    @staticmethod
+    def open():
+        Log.file = open(f'../logs/log_{datetime.now().strftime("%Y_%m_%d-%H_%M_%S")}.txt', 'w')
+
     @staticmethod
     def close():
-        Log.file.close()
+        if Log.file is not None:
+            Log.file.close()
+            Log.file = None
 
 class WaitForEvent(TimeOut):
     """
@@ -119,7 +122,6 @@ class WaitForEvent(TimeOut):
     
     def __init__(self, event, duration=float("inf"), name="WaitForEvent"):
         super(WaitForEvent, self).__init__(duration, name)
-        self.logger.debug("%s.__init__()" % (self.__class__.__name__))
         
         self._duration = duration
         self._event = event
@@ -186,8 +188,8 @@ class VehicleFollower(WaypointFollower):
                                               avoid_collision=True,
                                               local_planner_options={
                                                   "max_throttle": 0.85,
-                                                  "max_brake": 0.2})
-
+                                                  "max_brake": 0.2
+                                              })
         self._other_actor = other_actor
         self._duration = duration
         self._distance_between = distance_between
@@ -279,7 +281,6 @@ class ApproachFromBehind(AtomicBehavior):
         self._actor: carla.Vehicle
         
         super(ApproachFromBehind, self).__init__(name, ego_car)
-        self.logger.debug("%s.__init__()" % (self.__class__.__name__))
         
         self._other_cars = other_cars
         self._distance = distance
@@ -406,7 +407,6 @@ class StopVehicleImmediately(AtomicBehavior):
     def __init__(self, actor, name="StopVehicleImmediately"):
         self._actor: carla.Vehicle
         super(StopVehicleImmediately, self).__init__(name, actor)
-        self.logger.debug("%s.__init__()" % (self.__class__.__name__))
 
     def update(self):
         self._actor.set_target_velocity(carla.Vector3D())
@@ -419,40 +419,33 @@ class EMirrorsScoresClient(AtomicBehavior):
     Sends commands and events to the EMirrorsScores app
 
     Important parameters:
-    - name: Name of the atomic behavior
+    - data: command or event to send
     """
 
     client: Optional[TcpClient] = None
 
     def __init__(self, data, name="EMirrorsScoresClient"):
         """
-        Default init. Has to be called via super from derived class
+        Constructor
         """
         super(EMirrorsScoresClient, self).__init__(name)
-        self.logger.debug("%s.__init__()" % (self.__class__.__name__))
         
         self._data = data
         
-        if EMirrorsScoresClient.client is None:
-            EMirrorsScoresClient.client = TcpClient('192.168.1.130')
-            EMirrorsScoresClient.client.connect(lambda x: print(f'[TCP] {x}'))
-
     def update(self):
-        if EMirrorsScoresClient.client:
+        if EMirrorsScoresClient.client is not None:
+            print(f'Emirror TCP stage client: {self._data}')
             EMirrorsScoresClient.client.send(self._data)
-            
-            if self._data == 'stop':
-                EMirrorsScoresClient.client.close()
             
         return BehaviourStatus.SUCCESS
 
-    def terminate(self, new_status):
-        """
-        Connection termination
-        """
+    @staticmethod
+    def open(ip):
+        EMirrorsScoresClient.client = TcpClient(ip)
+        EMirrorsScoresClient.client.connect()
+
+    @staticmethod
+    def close():
         if EMirrorsScoresClient.client:
             EMirrorsScoresClient.client.close()
             EMirrorsScoresClient.client = None
-            
-        super(EMirrorsScoresClient, self).terminate(new_status)
-

@@ -38,6 +38,23 @@ from srunner.scenariomanager.scenarioatomics.custom_behaviors import (DebugPrint
 from srunner.scenariomanager.scenarioatomics.custom_trigger_conditions import DistractorSpawner
 from srunner.scenarios.basic_scenario import BasicScenario
 
+DISTANCES = [7, 15, 25, 40]
+DISTANCE_REPETITIONS = 5
+
+# pauses in seconds
+PAUSE_MIN = 20
+PAUSE_MAX = 30
+PAUSE_INTERVIEW = 12
+
+# velocities in m/s
+VELOCITY_MAIN = 25.0
+VELOCITY_APPROACHING = 3.0
+
+LOG_SERVER_IP = '192.168.1.141'
+
+HIDDEN_LOCATION_START = carla.Location(100, -169, 1)
+HIDDEN_DIST_BETWEEN_CARS = 6
+
 DISTRACTOR = "trafficcone01"
 DISTRACTOR_DISTANCE_TO_APPEAR = 200     # meters from the ego-car
 DISTRACTOR_LIFE_DURATION = 7            # seconds since appearance
@@ -76,21 +93,6 @@ DISTRACTOR_LOCATIONS = [
     carla.Location(71.0, 19.9, 11.1),
 ]
 
-DISTANCES = [7, 15, 25, 40]
-DISTANCE_REPETITIONS = 5
-
-HIDDEN_LOCATION_START = carla.Location(100, -169, 1)
-HIDDEN_GAP_PER_CAR = 6
-
-# pauses in seconds
-PAUSE_MIN = 20
-PAUSE_MAX = 30
-PAUSE_INTERVIEW = 10
-
-# velocities in m/s
-VELOCITY_MAIN = 25.0
-VELOCITY_APPROACHING = 3.0
-
 OPPONENT_CAR_TM_PARAMS = {
     "auto_lane_change": False,
     "distance_between_vehicles": 25,
@@ -98,6 +100,11 @@ OPPONENT_CAR_TM_PARAMS = {
     "ignore_lights_percentage": 100,
     "ignore_signs_percentage": 100
 }
+
+# to be enabled in dev mode
+# DISTANCES = [40]
+# DISTANCE_REPETITIONS = 1
+# LOG_SERVER_IP = '192.168.1.183'
 
 class EMirrors(BasicScenario):
 
@@ -130,6 +137,9 @@ class EMirrors(BasicScenario):
 
         self._distances = self._create_distances()
 
+        Log.open()
+        EMirrorsScoresClient.open(LOG_SERVER_IP)
+
         super(EMirrors, self).__init__("EMirrors",
             ego_vehicles,
             config,
@@ -161,9 +171,10 @@ class EMirrors(BasicScenario):
 
         root = Parallel("Root", policy=ParallelPolicy.SUCCESS_ON_ONE)
 
-        init = Sequence("Init")
-        init.add_child(EMirrorsScoresClient("start"))
-        init.add_child(ChangeAutoPilot(
+        trials = Sequence("Trials")
+
+        trials.add_child(EMirrorsScoresClient("start"))
+        trials.add_child(ChangeAutoPilot(
             self._ego_car,
             activate=True,
             name="Ego_AutoPilot",
@@ -171,16 +182,6 @@ class EMirrors(BasicScenario):
                 "auto_lane_change": False
             }))
 
-        # car_index = 1
-        # for other_car, other_car_transform in self._other_cars:
-        #     init.add_child(ChangeAutoPilot(
-        #         other_car,
-        #         activate=True,
-        #         name=f"OtherCar{car_index}_AutoPilot",
-        #         parameters=OPPONENT_CAR_TM_PARAMS))
-
-        trials = Sequence("Trials")
-        
         trial_index = 1
         for distance in self._distances:
 
@@ -235,7 +236,7 @@ class EMirrors(BasicScenario):
                 other_car_sequence.add_child(ActorTransformSetter(
                     other_car,
                     carla.Transform(carla.Location(
-                        HIDDEN_LOCATION_START.x + car_index * HIDDEN_GAP_PER_CAR,
+                        HIDDEN_LOCATION_START.x + car_index * HIDDEN_DIST_BETWEEN_CARS,
                         HIDDEN_LOCATION_START.y,
                         HIDDEN_LOCATION_START.z)),
                     name=f"T{trial_index}_OtherCar{car_index}_Hide"))
@@ -247,6 +248,7 @@ class EMirrors(BasicScenario):
                 trial.add_child(other_car_sequence)
                 car_index += 1
             
+            print(type(pause))
             trials.add_child(Log("trial", "start", trial_index, distance, f"{pause:.1f}"))
             trials.add_child(EMirrorsScoresClient(f"trial\tstart\t{trial_index}\t{distance}\t{pause:.1f}"))
             trials.add_child(trial)
@@ -256,6 +258,9 @@ class EMirrors(BasicScenario):
             trial_index += 1
         
         trials.add_child(EMirrorsScoresClient("stop"))
+        trials.add_child(Idle(1.0))
+        trials.add_child(DebugPrint(self._ego_car, "Finished"))
+        trials.add_child(Idle(1.0))
         
         root.add_child(trials)
 
@@ -284,6 +289,8 @@ class EMirrors(BasicScenario):
         Remove all actors upon deletion
         """
         self.remove_all_actors()
+        Log.close()
+        EMirrorsScoresClient.close()
 
 
     # Internal

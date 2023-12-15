@@ -19,7 +19,7 @@ class TcpClient:
         
         self._client = socket_client
         
-    def connect(self, cb: Callable[[str], None]) -> None:
+    def connect(self, cb: Optional[Callable[[str], None]] = None) -> None:
         self._cb = cb
         self._client.connect(timeout = 20.0)
         print(f'TCC: connected to {self._host}:{PORT}')

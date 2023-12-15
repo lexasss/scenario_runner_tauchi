@@ -83,17 +83,15 @@ if ($order -le 0)
     return
 }
 
-Set-Location ..
-
-. ".set-env.ps1"
-. ".enter-venv.ps1"
-
-$isCarlaRunning = Get-Process -Name "CarlaUE4" -ErrorAction SilentlyContinue
-if ($null -eq $isCarlaRunning)
+$carla = Get-Process -Name "CarlaUE4" -ErrorAction SilentlyContinue
+if ($null -eq $carla)
 {
-    Write-Host "Starting CARLA. Please wait..."
-    Start-Process -FilePath "D:\CarlaGit\carla\Build\UE4Carla\0.9.13-50-gba3e0f5b2-dirty\WindowsNoEditor\CarlaUE4.exe"
-    Start-Sleep -Seconds 7.0
+    $okToStartCarla = Read-Host "CARLA is not running. Do you want to start it? [y/N]"
+    if ($okToStartCarla -eq "y")
+    {
+        $carla = Start-Process -FilePath "D:\CarlaGit\carla\Build\UE4Carla\0.9.13-50-gba3e0f5b2-dirty\WindowsNoEditor\CarlaUE4.exe" -PassThru
+        Start-Sleep -Seconds 7.0
+    }
 }
 
 $telemetry = Start-Process `
@@ -102,6 +100,11 @@ $telemetry = Start-Process `
     -WorkingDirectory "D:\CarlaGit\experiments\scenarios" `
     -PassThru
 
+Set-Location ..
+
+. ".set-env.ps1"
+. ".enter-venv.ps1"
+    
 Set-Location .\scenario_runner
 
 python run_experiment.py `
@@ -117,6 +120,11 @@ python run_experiment.py `
 Set-Location ..\scenarios
 
 Stop-Process -InputObject $telemetry -ErrorAction SilentlyContinue
+
+if ($null -ne $carla)
+{
+    Stop-Process -InputObject $carla -ErrorAction SilentlyContinue
+}
     
 Write-Host ""
 Write-Host "Done"

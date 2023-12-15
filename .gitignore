@@ -11,3 +11,4 @@ results*.txt
 *.dot
 .venv/
 scenarios/*.txt
+logs/
