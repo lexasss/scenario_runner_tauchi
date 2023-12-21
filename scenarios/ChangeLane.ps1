@@ -83,13 +83,13 @@ if ($order -le 0)
     return
 }
 
-$carla = Get-Process -Name "CarlaUE4" -ErrorAction SilentlyContinue
-if ($null -eq $carla)
+$carlaProc = Get-Process -Name "CarlaUE4" -ErrorAction SilentlyContinue
+if ($null -eq $carlaProc)
 {
     $okToStartCarla = Read-Host "CARLA is not running. Do you want to start it? [y/N]"
     if ($okToStartCarla -eq "y")
     {
-        $carla = Start-Process -FilePath "D:\CarlaGit\carla\Build\UE4Carla\0.9.13-50-gba3e0f5b2-dirty\WindowsNoEditor\CarlaUE4.exe" -PassThru
+        $carlaProc = Start-Process -FilePath "D:\CarlaGit\carla\Build\UE4Carla\0.9.13-50-gba3e0f5b2-dirty\WindowsNoEditor\CarlaUE4.exe" -PassThru
         Start-Sleep -Seconds 7.0
     }
 }
@@ -115,16 +115,17 @@ python run_experiment.py `
         0 `
     --reloadWorld `
     --waitForEgo `
+    --sync `
     --params=$order
 
 Set-Location ..\scenarios
 
 Stop-Process -InputObject $telemetry -ErrorAction SilentlyContinue
 
-if ($null -ne $carla)
-{
-    Stop-Process -InputObject $carla -ErrorAction SilentlyContinue
-}
+# if ($null -ne $carlaProc)
+# {
+#     Stop-Process -InputObject $carlaProc -ErrorAction SilentlyContinue
+# }
     
 Write-Host ""
 Write-Host "Done"

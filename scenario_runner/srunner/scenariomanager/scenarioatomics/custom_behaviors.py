@@ -274,6 +274,7 @@ class ApproachFromBehind(AtomicBehavior):
                  other_cars: List[carla.Vehicle],
                  distance: float,
                  pause: float,
+                 verbose = False,
                  name="ApproachFromBehind"):
         """
         Default init. Has to be called via super from derived class
@@ -285,6 +286,7 @@ class ApproachFromBehind(AtomicBehavior):
         self._other_cars = other_cars
         self._distance = distance
         self._pause = pause
+        self._verbose = verbose
         
         self._pause_end = 0
         self._approaching_car: Optional[carla.Vehicle] = None
@@ -305,7 +307,8 @@ class ApproachFromBehind(AtomicBehavior):
 
             # we may have a car that is closer than needed
             if closest_car_dist < self._distance:
-                print(f'AFTER PAUSE: Some cars are too close ({closest_car_dist:.1f} m). Waiting...')
+                if self._verbose:
+                    print(f'AFTER PAUSE: Some cars are too close ({closest_car_dist:.1f} m). Waiting...')
                 return BehaviourStatus.RUNNING
             
             # here we found that car: it is behind the ego car and is located further than the target distance.
@@ -321,10 +324,10 @@ class ApproachFromBehind(AtomicBehavior):
             
             dist = calculate_distance(car_loc, ego_loc)
             if dist < self._distance:
-                # the approaching car is close enough, let finish this behaviour
+                # the approaching car is close enough, lets finish this behaviour
                 print('APPROACHING: the car is close enough')
                 return BehaviourStatus.SUCCESS
-            else:
+            elif self._verbose:
                 print(f'APPROACHING: {dist:.1f}')
 
             # still too far away... lets continue running
@@ -355,12 +358,14 @@ class ApproachFromBehind(AtomicBehavior):
         
         # avoid the locations close to the cross
         if math.sqrt((ego_loc.x - CROSS_X)**2 + (ego_loc.y - CROSS_Y)**2) < CROSS_SIZE:
-            print('AFTER PAUSE: Passing the cross')
+            if self._verbose:
+                print('AFTER PAUSE: Passing the cross')
             return (None, 0)
         
         # find the closest car running behind
         ego_yaw = ego_transform.rotation.yaw * math.pi / 180
-        print(f'AFTER PAUSE: ego car yaw {ego_yaw*180/math.pi:.1f}')
+        if self._verbose:
+            print(f'AFTER PAUSE: ego car yaw {ego_yaw*180/math.pi:.1f}')
 
         closest_dist = float("inf")
         closest_car: Optional[carla.Vehicle] = None
@@ -387,7 +392,8 @@ class ApproachFromBehind(AtomicBehavior):
             if dist < closest_dist:
                 closest_dist = dist
                 closest_car = car
-                print(f'AFTER PAUSE: considering car at {dx:.1f}, {dy:.1f}, angle {angle*180/math.pi:.1f}')
+                if self._verbose:
+                    print(f'AFTER PAUSE: considering car at {dx:.1f}, {dy:.1f}, angle {angle*180/math.pi:.1f}')
 
         if closest_car is None:
             print('AFTER PAUSE: hmm...')
@@ -441,11 +447,12 @@ class EMirrorsScoresClient(AtomicBehavior):
 
     @staticmethod
     def open(ip):
-        EMirrorsScoresClient.client = TcpClient(ip)
-        EMirrorsScoresClient.client.connect()
+        if ip is not None:
+            EMirrorsScoresClient.client = TcpClient(ip)
+            EMirrorsScoresClient.client.connect()
 
     @staticmethod
     def close():
-        if EMirrorsScoresClient.client:
+        if EMirrorsScoresClient.client is not None:
             EMirrorsScoresClient.client.close()
             EMirrorsScoresClient.client = None
