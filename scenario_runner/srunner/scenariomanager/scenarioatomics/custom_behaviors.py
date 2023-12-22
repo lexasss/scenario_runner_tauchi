@@ -126,10 +126,8 @@ class WaitForEvent(TimeOut):
         self._event = event
 
     def initialise(self):
-        if self._duration != float("inf"):
+        if self._duration != float("inf") and self._duration > 0:
             print_debug(f"{self.name} Event '{self._event}' will be set in {self._duration} s.")
-        else:
-            print_debug(f"{self.name} Waiting for event '{self._event}'")
         return super(WaitForEvent, self).initialise()
 
     def update(self):
@@ -144,7 +142,7 @@ class WaitForEvent(TimeOut):
             print_debug(f"{self.name} Sets event '{self._event}'")
             WaitForEvent._events. add(self._event)
         elif self._event in WaitForEvent._events:
-            print_debug(f"{self.name} Event '{self._event}' is set")
+            # print_debug(f"{self.name} Event '{self._event}' is set")
             status = BehaviourStatus.SUCCESS
         
         return status
@@ -312,12 +310,12 @@ class ApproachFromBehind(AtomicBehavior):
             # we may have a car that is closer than needed
             if closest_car_dist < self._distance:
                 if self._verbose:
-                    print(f'AFTER PAUSE: Some cars are too close ({closest_car_dist:.1f} m). Waiting...')
+                    print(f'APPROACHING: Some cars are too close ({closest_car_dist:.1f} m). Waiting...')
                 return BehaviourStatus.RUNNING
             
             # here we found that car: it is behind the ego car and is located further than the target distance.
             
-            print(f'AFTER PAUSE: set an appoaching car {closest_car_dist:.1f} meters behind')
+            print_debug(f'APPROACHING: set a car {closest_car_dist:.1f} meters behind')
             self._approaching_car = closest_car
 
             wp = self._world \
@@ -328,7 +326,8 @@ class ApproachFromBehind(AtomicBehavior):
                     lane_type=(carla.LaneType.Driving | carla.LaneType.Shoulder | carla.LaneType.OnRamp | carla.LaneType.OffRamp)
                 )
             if wp is not None:
-                EMirrorsScoresClient.send(f'trial\t{self._trial_index}\tlane{wp.lane_type}, {wp.lane_id}')
+                lane = 'left' if wp.lane_id == -1 else ('right' if wp.lane_id == -3 else wp.lane_id)
+                EMirrorsScoresClient.send(f'trial\t{self._trial_index}\tlane\t{lane}')
 
         else:
             # we have an approaching car, so lets check how close it is
@@ -339,7 +338,7 @@ class ApproachFromBehind(AtomicBehavior):
             dist = calculate_distance(car_loc, ego_loc)
             if dist < self._distance:
                 # the approaching car is close enough, lets finish this behaviour
-                print('APPROACHING: the car is close enough')
+                print_debug('APPROACHING: the car is close enough')
                 return BehaviourStatus.SUCCESS
             elif self._verbose:
                 print(f'APPROACHING: {dist:.1f}')
@@ -368,7 +367,7 @@ class ApproachFromBehind(AtomicBehavior):
     def _get_closest_car_behind(self):
         ego_transform = CarlaDataProvider.get_transform(self._actor)
         if ego_transform is None:
-            print('AFTER PAUSE: No ego car')
+            print_debug('APPROACHING: No ego car')
             return (None, 0)
         
         ego_loc = ego_transform.location
@@ -376,13 +375,13 @@ class ApproachFromBehind(AtomicBehavior):
         # avoid the locations close to the cross
         if math.sqrt((ego_loc.x - CROSS_X)**2 + (ego_loc.y - CROSS_Y)**2) < CROSS_SIZE:
             if self._verbose:
-                print('AFTER PAUSE: Passing the cross')
+                print('APPROACHING: Passing the cross')
             return (None, 0)
         
         # find the closest car running behind
         ego_yaw = ego_transform.rotation.yaw * math.pi / 180
         if self._verbose:
-            print(f'AFTER PAUSE: ego car yaw {ego_yaw*180/math.pi:.1f}')
+            print(f'APPROACHING: ego car yaw {ego_yaw*180/math.pi:.1f}')
 
         closest_dist = float("inf")
         closest_car: Optional[carla.Vehicle] = None
@@ -410,12 +409,10 @@ class ApproachFromBehind(AtomicBehavior):
                 closest_dist = dist
                 closest_car = car
                 if self._verbose:
-                    print(f'AFTER PAUSE: considering car at {dx:.1f}, {dy:.1f}, angle {angle*180/math.pi:.1f}')
+                    print(f'APPROACHING: considering car at {dx:.1f}, {dy:.1f}, angle {angle*180/math.pi:.1f}')
 
         if closest_car is None:
-            print('AFTER PAUSE: hmm...')
-        else:
-            print(f'AFTER PAUSE: selected car at the distance {closest_dist:.1f}')
+            print('APPROACHING: hmm...')
                   
         return (closest_car, closest_dist)
     
@@ -474,5 +471,7 @@ class EMirrorsScoresClient(AtomicBehavior):
     @staticmethod
     def send(data: str):
         if EMirrorsScoresClient.client is not None:
-            print(f'EMirrorsScore TCP client: {data}')
+            print_debug(f'EMS TCP: {data}')
             EMirrorsScoresClient.client.send(data)
+        else:
+            print_debug(f'[DUMMY] EMS TCP: {data}')

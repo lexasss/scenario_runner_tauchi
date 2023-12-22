@@ -10,7 +10,7 @@ from srunner.scenariomanager.scenarioatomics.atomic_trigger_conditions import At
 from srunner.scenariomanager.timer import GameTime
 
 from srunner.scenariomanager.scenarioatomics.atomic_behaviors import calculate_distance
-from srunner.scenariomanager.scenarioatomics.custom_behaviors import print_debug
+from srunner.scenariomanager.scenarioatomics.custom_behaviors import (print_debug, EMirrorsScoresClient)
 
 class DistractorSpawner(AtomicCondition):
 
@@ -89,6 +89,8 @@ class DistractorSpawner(AtomicCondition):
         if (self._distractor is not None):
             self._distractor.destroy()
             self._distractor = None
+
+            EMirrorsScoresClient.send(f'distractor\thide')
             print_debug(f'DISTRACTOR: {self._distractor_type} removed / {GameTime.get_time():.1f} sec')
 
     def _create_distractor(self):
@@ -106,6 +108,7 @@ class DistractorSpawner(AtomicCondition):
                 self._distractor = distractor
                 self._distractor_creation_time = GameTime.get_time()
 
+                EMirrorsScoresClient.send(f'distractor\tshow\t{x:.1f},{y:.1f}')
                 print_debug(f'DISTRACTOR: {self._distractor_type} created at ({x:.1f}, {y:.1f}) / {time:.1f} sec')
         except:
             print_debug(f'DISTRACTOR: Cannot create {self._distractor_type} at ({x:.1f}, {y:.1f})')
