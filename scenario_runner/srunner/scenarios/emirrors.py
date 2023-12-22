@@ -15,12 +15,11 @@ and another runs behind it for some time. The this car accelerates and passes by
 
 import carla
 import copy
-import math
 import random
 import subprocess
 import sys
 
-from typing import cast, List, Tuple, Optional
+from typing import cast, List, Tuple
 
 from py_trees.composites import (Parallel, Sequence)
 from py_trees.common import ParallelPolicy
@@ -29,8 +28,7 @@ from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (ActorTransformSetter,
                                                                       WaypointFollower,
                                                                       Idle,
-                                                                      ChangeAutoPilot,
-                                                                      calculate_distance)
+                                                                      ChangeAutoPilot)
 from srunner.scenariomanager.scenarioatomics.custom_behaviors import (DebugPrint,
                                                                       Log,
                                                                       WaitForEvent,
@@ -107,7 +105,7 @@ OPPONENT_CAR_TM_PARAMS = {
 # DISTANCES = [40]
 # DISTANCE_REPETITIONS = 1
 # LOG_SERVER_IP = '192.168.1.183'
-LOG_SERVER_IP = None
+# LOG_SERVER_IP = None
 
 class EMirrors(BasicScenario):
 

@@ -56,25 +56,25 @@ function CheckCameraSettings
 
 # Routine
 
-# $isOK = CheckVechicleSettings
-# if (-not $isOK)
-# {
-#     Write-Host "==== MISCONFIGURED ===="
-#     Write-Host "File 'DReyeVRConfig.ini' has some lines with '$SettingsMark' mark commented out"
-#     Write-Host ""
-#     Write-Host "Exiting...."
-#     return
-# }
+$isOK = CheckVechicleSettings
+if (-not $isOK)
+{
+    Write-Host "==== MISCONFIGURED ===="
+    Write-Host "File 'DReyeVRConfig.ini' has some lines with '$SettingsMark' mark commented out"
+    Write-Host ""
+    Write-Host "Exiting...."
+    return
+}
 
-# $isOK = CheckCameraSettings
-# if (-not $isOK)
-# {
-#     Write-Host "==== MISCONFIGURED ===="
-#     Write-Host "File 'CaptureCameras.ini' is not the one configured for '$SettingsMark'"
-#     Write-Host ""
-#     Write-Host "Exiting...."
-#     return
-# }
+$isOK = CheckCameraSettings
+if (-not $isOK)
+{
+    Write-Host "==== MISCONFIGURED ===="
+    Write-Host "File 'CaptureCameras.ini' is not the one configured for '$SettingsMark'"
+    Write-Host ""
+    Write-Host "Exiting...."
+    return
+}
 
 $condition = Get-Condition
 if ($condition -le 0)
