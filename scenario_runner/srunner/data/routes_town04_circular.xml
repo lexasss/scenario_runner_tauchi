@@ -2,17 +2,17 @@
 <routes>
    <route id="0" town="Town04">
 	   <waypoint x="0" y="13" z="11" pitch="0.0" roll="0.0" yaw="180" />
-      <waypoint x="8" y="-100" z="0.0" pitch="0.0" roll="0.0" yaw="-90" />
+       <waypoint x="8" y="-100" z="0.0" pitch="0.0" roll="0.0" yaw="-90" />
  	   <waypoint x="0" y="13" z="11" pitch="0.0" roll="0.0" yaw="180" />
    </route>
    <route id="1" town="Town04">
 	   <waypoint x="-170" y="12.7" z="7" pitch="0.0" roll="0.0" yaw="180" />
-      <waypoint x="-90" y="404" z="0.0" pitch="0.0" roll="0.0" yaw="-15" />
+       <waypoint x="-90" y="404" z="0.0" pitch="0.0" roll="0.0" yaw="-15" />
 	   <waypoint x="-170" y="12.7" z="7" pitch="0.0" roll="0.0" yaw="180" />
    </route>
    <route id="2" town="Town04">
 	   <waypoint x="305" y="17.5" z="2.5" pitch="0.0" roll="0.0" yaw="180" />
-      <waypoint x="-90" y="404" z="0.0" pitch="0.0" roll="0.0" yaw="-15" />
+       <waypoint x="-90" y="404" z="0.0" pitch="0.0" roll="0.0" yaw="-15" />
 	   <waypoint x="305" y="17.5" z="2.5" pitch="0.0" roll="0.0" yaw="180" />
    </route>
    <route id="3" town="Town04">

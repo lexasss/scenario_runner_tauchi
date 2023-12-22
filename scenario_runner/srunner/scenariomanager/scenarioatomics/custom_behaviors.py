@@ -1,4 +1,3 @@
-import io
 import carla
 import math
 
@@ -274,6 +273,8 @@ class ApproachFromBehind(AtomicBehavior):
                  other_cars: List[carla.Vehicle],
                  distance: float,
                  pause: float,
+                 world: carla.World,
+                 trial_index: int,
                  verbose = False,
                  name="ApproachFromBehind"):
         """
@@ -286,10 +287,13 @@ class ApproachFromBehind(AtomicBehavior):
         self._other_cars = other_cars
         self._distance = distance
         self._pause = pause
+        self._world = world
+        self._trial_index = trial_index
         self._verbose = verbose
         
         self._pause_end = 0
         self._approaching_car: Optional[carla.Vehicle] = None
+        self._approaching_car_lane: Optional[str] = None
 
     def update(self):
         if GameTime.get_time() < self._pause_end:
@@ -315,6 +319,16 @@ class ApproachFromBehind(AtomicBehavior):
             
             print(f'AFTER PAUSE: set an appoaching car {closest_car_dist:.1f} meters behind')
             self._approaching_car = closest_car
+
+            wp = self._world \
+                .get_map() \
+                .get_waypoint(
+                    closest_car.get_location(),
+                    project_to_road=True,
+                    lane_type=(carla.LaneType.Driving | carla.LaneType.Shoulder | carla.LaneType.OnRamp | carla.LaneType.OffRamp)
+                )
+            if wp is not None:
+                EMirrorsScoresClient.send(f'trial\t{self._trial_index}\tlane{wp.lane_type}, {wp.lane_id}')
 
         else:
             # we have an approaching car, so lets check how close it is
@@ -345,6 +359,9 @@ class ApproachFromBehind(AtomicBehavior):
     def initialise(self):
         self._pause_end = GameTime.get_time() + self._pause
         return
+    
+    def get_condition(self) -> str:
+        return f'{self._approaching_car_lane}'
     
     # Internal
     
@@ -439,10 +456,7 @@ class EMirrorsScoresClient(AtomicBehavior):
         self._data = data
         
     def update(self):
-        if EMirrorsScoresClient.client is not None:
-            print(f'Emirror TCP stage client: {self._data}')
-            EMirrorsScoresClient.client.send(self._data)
-            
+        EMirrorsScoresClient.send(self._data)
         return BehaviourStatus.SUCCESS
 
     @staticmethod
@@ -456,3 +470,9 @@ class EMirrorsScoresClient(AtomicBehavior):
         if EMirrorsScoresClient.client is not None:
             EMirrorsScoresClient.client.close()
             EMirrorsScoresClient.client = None
+
+    @staticmethod
+    def send(data: str):
+        if EMirrorsScoresClient.client is not None:
+            print(f'EMirrorsScore TCP client: {data}')
+            EMirrorsScoresClient.client.send(data)
