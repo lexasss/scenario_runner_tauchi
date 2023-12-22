@@ -14,12 +14,13 @@ and another runs behind it for some time. The this car accelerates and passes by
 """
 
 import carla
-import random
 import copy
+import math
+import random
 import subprocess
 import sys
 
-from typing import cast, List, Tuple
+from typing import cast, List, Tuple, Optional
 
 from py_trees.composites import (Parallel, Sequence)
 from py_trees.common import ParallelPolicy
@@ -28,7 +29,8 @@ from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (ActorTransformSetter,
                                                                       WaypointFollower,
                                                                       Idle,
-                                                                      ChangeAutoPilot)
+                                                                      ChangeAutoPilot,
+                                                                      calculate_distance)
 from srunner.scenariomanager.scenarioatomics.custom_behaviors import (DebugPrint,
                                                                       Log,
                                                                       WaitForEvent,
@@ -202,7 +204,9 @@ class EMirrors(BasicScenario):
                 self._ego_car,
                 [car for (car, _) in self._other_cars],
                 distance,
-                pause
+                pause,
+                self._world,
+                trial_index
             ))
             
             ego_car_sequence.add_child(DebugPrint(self._ego_car, f"T{trial_index}_EGO: Trial started"))
@@ -251,11 +255,10 @@ class EMirrors(BasicScenario):
                 trial.add_child(other_car_sequence)
                 car_index += 1
             
-            print(type(pause))
             trials.add_child(Log("trial", "start", trial_index, distance, f"{pause:.1f}"))
-            trials.add_child(EMirrorsScoresClient(f"trial\tstart\t{trial_index}\t{distance}\t{pause:.1f}"))
+            trials.add_child(EMirrorsScoresClient(f"trial\t{trial_index}\tstart\t{distance}\t{pause:.1f}"))
             trials.add_child(trial)
-            trials.add_child(EMirrorsScoresClient(f"trial\tend\t{trial_index}"))
+            trials.add_child(EMirrorsScoresClient(f"trial\t{trial_index}\tend"))
             trials.add_child(Log("trial", "stop", trial_index))
 
             trial_index += 1
