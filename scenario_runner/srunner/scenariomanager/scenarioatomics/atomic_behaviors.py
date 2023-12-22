@@ -2033,6 +2033,8 @@ class WaypointFollower(AtomicBehavior):
                     # @TODO replace access to private _waypoints_queue with public getter
                     if local_planner._waypoints_queue:  # pylint: disable=protected-access
                         success = False
+                    else:
+                        print(f'! WAYPOINT_FOLLOWER: {self.name} waypoint queue is empty')
                 # If the actor is a pedestrian, we have to use the WalkerAIController
                 # The walker is sent to the next waypoint in its plan
                 else:
@@ -2055,6 +2057,13 @@ class WaypointFollower(AtomicBehavior):
                         control.speed = self._target_speed
                         control.direction = CarlaDataProvider.get_transform(actor).rotation.get_forward_vector()
                         actor.apply_control(control)
+            else:
+                if actor is None:
+                    print(f'! WAYPOINT_FOLLOWER: {self.name} no actor')
+                elif not actor.is_alive: 
+                    print(f'! WAYPOINT_FOLLOWER: {self.name} actor is not alive')
+                elif local_planner is None:
+                    print(f'! WAYPOINT_FOLLOWER: {self.name} no local planner')
 
         if success:
             new_status = py_trees.common.Status.SUCCESS

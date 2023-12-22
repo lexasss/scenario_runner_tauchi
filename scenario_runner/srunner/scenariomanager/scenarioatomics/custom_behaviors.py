@@ -446,8 +446,8 @@ class EMirrorsScoresClient(AtomicBehavior):
         return BehaviourStatus.SUCCESS
 
     @staticmethod
-    def open(ip):
-        if ip is not None:
+    def open(ip: str):
+        if EMirrorsScoresClient.client is None:
             EMirrorsScoresClient.client = TcpClient(ip)
             EMirrorsScoresClient.client.connect()
 

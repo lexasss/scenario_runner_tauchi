@@ -18,18 +18,15 @@
                                     { "x": "-50.2", "y": "9.9", "z": "10.6", "yaw": "180.0", "model": "vehicle.tesla.model3" },
 
                                     { "x": "-70", "y": "12.8", "z": "10", "yaw": "180", "model": "vehicle.tesla.model3" },
-                                    { "x": "160", "y": "14.5", "z": "9", "yaw": "180", "model": "vehicle.tesla.model3" },
-                                    { "x": "260", "y": "16.2", "z": "4", "yaw": "180", "model": "vehicle.tesla.model3" },
  
-                                    { "x": "300.2", "y": "-359.6", "z": "0.5", "yaw": "20.2", "model": "vehicle.tesla.model3" },
                                     { "x": "340.2", "y": "-339.1", "z": "0.5", "yaw": "41.0", "model": "vehicle.tesla.model3" },
-                                    { "x": "375.9", "y": "-296.1", "z": "0.5", "yaw": "62.0", "model": "vehicle.tesla.model3" },
+
+                                    { "x": "300.2", "y": "-359.6", "z": "0.5", "yaw": "20.2", "model": "vehicle.tesla.model3" },
                                     { "x": "385.4", "y": "-250.4", "z": "0.5", "yaw": "82.7", "model": "vehicle.tesla.model3" },
                                     { "x": "392.3", "y": "-200.0", "z": "0.5", "yaw": "90.6", "model": "vehicle.tesla.model3" },
                                     { "x": "385.8", "y": "-149.9", "z": "0.5", "yaw": "90.6", "model": "vehicle.tesla.model3" },
                                     { "x": "391.3", "y": "-99.4", "z": "0.5", "yaw": "90.6", "model": "vehicle.tesla.model3" },
                                     { "x": "384.8", "y": "-49.0", "z": "0.5", "yaw": "90.4", "model": "vehicle.tesla.model3" },
-                                    { "x": "380.7", "y": "-2.6", "z": "0.5", "yaw": "126.1", "model": "vehicle.tesla.model3" },
                                     { "x": "333.6", "y": "20.4", "z": "1.1", "yaw": "180.0", "model": "vehicle.tesla.model3" },
                                     { "x": "283.6", "y": "13.7", "z": "2.8", "yaw": "180.0", "model": "vehicle.tesla.model3" },
                                     { "x": "233.4", "y": "18.8", "z": "5.6", "yaw": "180.0", "model": "vehicle.tesla.model3" },

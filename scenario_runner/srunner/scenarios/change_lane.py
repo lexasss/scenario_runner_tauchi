@@ -228,6 +228,7 @@ class ChangeLane(BasicScenario):
         
         # -- Behaviours for other cars
         carID = 1
+        other_cars_sequence = Parallel("OtherCars", policy=ParallelPolicy.SUCCESS_ON_ALL)
         for (car, transform) in self._other_cars:
             velocity = ChangeLane.MAIN_VELOCITY
 
@@ -240,9 +241,11 @@ class ChangeLane(BasicScenario):
             car_sequence = Sequence(car_name)
             car_sequence.add_child(self._init_vehicle(car, car_name, transform))
             car_sequence.add_child(self._drive_straight_TESLA(car, car_name, velocity))
-            root.add_child(car_sequence)
+            other_cars_sequence.add_child(car_sequence)
 
             carID += 1
+        
+        root.add_child(other_cars_sequence)
         
         return root
 

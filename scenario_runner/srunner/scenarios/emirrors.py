@@ -105,6 +105,7 @@ OPPONENT_CAR_TM_PARAMS = {
 # DISTANCES = [40]
 # DISTANCE_REPETITIONS = 1
 # LOG_SERVER_IP = '192.168.1.183'
+# LOG_SERVER_IP = None
 
 class EMirrors(BasicScenario):
 
@@ -138,7 +139,9 @@ class EMirrors(BasicScenario):
         self._distances = self._create_distances()
 
         Log.open()
-        EMirrorsScoresClient.open(LOG_SERVER_IP)
+
+        if LOG_SERVER_IP is not None:
+            EMirrorsScoresClient.open(LOG_SERVER_IP)
 
         super(EMirrors, self).__init__("EMirrors",
             ego_vehicles,
